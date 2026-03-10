@@ -1,7 +1,6 @@
+import { useRef, useState } from "react";
 
-Action: file_editor create /app/frontend/src/components/SpotlightCard.jsx --file-text "import { useRef, useState } from \"react\";
-
-const SpotlightCard = ({ children, className = \"\" }) => {
+const SpotlightCard = ({ children, className = "" }) => {
   const cardRef = useRef(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
 
@@ -20,8 +19,8 @@ const SpotlightCard = ({ children, className = \"\" }) => {
       onMouseMove={handleMouseMove}
       className={`spotlight-card ${className}`}
       style={{
-        \"--mouse-x\": `${position.x}px`,
-        \"--mouse-y\": `${position.y}px`,
+        "--mouse-x": `${position.x}px`,
+        "--mouse-y": `${position.y}px`,
       }}
     >
       {children}
@@ -30,5 +29,3 @@ const SpotlightCard = ({ children, className = \"\" }) => {
 };
 
 export default SpotlightCard;
-"
-Observation: Create successful: /app/frontend/src/components/SpotlightCard.jsx
