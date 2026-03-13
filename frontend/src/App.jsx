@@ -1,4 +1,23 @@
-import { useState } from 'react'
+function App() {
+  return (
+    <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white p-4">
+      <h1 className="text-4xl md:text-6xl font-display text-blue-400 font-bold mb-4 text-center">
+        EthanScape x MongoDB
+      </h1>
+      <p className="font-body text-lg text-slate-300">
+        Si le fond est noir et ce texte est gris, Tailwind est OK ! ✅
+      </p>
+      <button className="mt-8 px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-lg font-bold transition-all">
+        Tester la connexion
+      </button>
+    </div>
+  )
+}
+
+export default App
+
+
+/*import { useState, useEffect } from 'react' // Ajout de useEffect
 import reactLogo from './assets/react.svg'
 import viteLogo from './assets/vite.svg'
 import heroImg from './assets/hero.png'
@@ -6,6 +25,15 @@ import './App.css'
 
 function App() {
   const [count, setCount] = useState(0)
+  const [message, setMessage] = useState('Chargement...') // État pour le message Python
+
+  // Bloc pour appeler Python
+  useEffect(() => {
+    fetch('http://127.0.0.1:5000/api/data')
+      .then(res => res.json())
+      .then(data => setMessage(data.message))
+      .catch(err => setMessage("Erreur : Le serveur Python est-il lancé ?"))
+  }, [])
 
   return (
     <>
@@ -16,11 +44,12 @@ function App() {
           <img src={viteLogo} className="vite" alt="Vite logo" />
         </div>
         <div>
-          <h1>Get started</h1>
+          <h1>{message}</h1> {/* Affiche le message de Flask ici *}
           <p>
             Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
           </p>
         </div>
+
         <button
           className="counter"
           onClick={() => setCount((count) => count + 1)}
@@ -118,4 +147,4 @@ function App() {
   )
 }
 
-export default App
+export default App*/
