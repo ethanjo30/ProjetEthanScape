@@ -39,7 +39,7 @@ const Navbar = () => {
           <img 
             src={LOGO_URL} 
             alt="EthanScape" 
-            className="h-12 w-auto invert"
+            className="h-12 w-auto"
           />
         </Link>
 

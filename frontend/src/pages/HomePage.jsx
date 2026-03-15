@@ -72,9 +72,9 @@ const HomePage = () => {
           <img 
             src={LOGO_URL} 
             alt="EthanScape" 
-            className="h-32 md:h-40 w-auto mx-auto mb-8 invert animate-fade-in-up"
+            className="h-32 md:h-40 w-auto mx-auto mb-8 animate-fade-in-up"
           />
-          
+    
           <h1 
             className="text-4xl sm:text-5xl lg:text-7xl font-bold text-white mb-6 font-['Playfair_Display'] animate-fade-in-up stagger-1"
             style={{ opacity: 0, animationFillMode: 'forwards' }}
