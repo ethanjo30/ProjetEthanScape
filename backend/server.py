@@ -10,6 +10,12 @@ from typing import List, Optional
 import uuid
 from datetime import datetime, timezone
 from dotenv import load_dotenv
+from fastapi_mail import ConnectionConfig, FastMail, MessageSchema, MessageType
+from passlib.context import CryptContext
+from jose import jwt, JWTError
+from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends
+from fastapi import FastAPI, APIRouter, HTTPException, Depends
 
 # Chargement du .env
 ROOT_DIR = Path(__file__).parent
@@ -29,6 +35,31 @@ db = client[db_name]
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
+# Configuration Email
+conf = ConnectionConfig(
+    MAIL_USERNAME=os.getenv('MAIL_USERNAME'),
+    MAIL_PASSWORD=os.getenv('MAIL_PASSWORD'), 
+    MAIL_FROM="ethanscape.servicesclients@gmail.com",
+    MAIL_PORT=587,
+    MAIL_SERVER="smtp.gmail.com",
+    MAIL_STARTTLS=True,
+    MAIL_SSL_TLS=False,
+    USE_CREDENTIALS=True,
+    VALIDATE_CERTS=True
+)
+
+fastmail = FastMail(conf)
+# ========================
+# CONFIGURATION SÉCURITÉ (PLACE-LE ICI)
+# ========================
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "cree_une_phrase_tres_longue_ici")
+ALGORITHM = "HS256"
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/login")
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
 # ========================
 # PRICING CONFIGURATION
 # ========================
@@ -194,9 +225,10 @@ async def get_escape(escape_id: str):
     
     return escape
 
+# --- C'EST CETTE FONCTION QUI CHANGE ---
 @api_router.post("/escapes", response_model=EscapeGame) 
-async def create_escape(escape: EscapeGameCreate):
-    """Create a new escape game"""
+async def create_escape(escape: EscapeGameCreate, token: str = Depends(oauth2_scheme)):
+    """Seul un admin connecté peut créer un escape game"""
     escape_obj = EscapeGame(**escape.model_dump())
     doc = escape_obj.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
@@ -291,9 +323,36 @@ async def create_contact_message(contact: ContactMessageCreate):
     return message_obj
 
 # ========================
+# ROUTES - AUTHENTICATION
+# ========================
+@api_router.post("/login")
+async def login(data: LoginRequest):
+    """Route pour connecter l'admin"""
+    # Identifiants de test (tu pourras les mettre en BDD plus tard)
+    ADMIN_EMAIL = "admin@ethanscape.com"
+    ADMIN_PASS = "EthanScape2026!" # C'est le mot de passe que tu taperas sur le site
+
+    if data.username == ADMIN_EMAIL and data.password == ADMIN_PASS:
+        # Création du Token JWT
+        access_token_expires = datetime.now(timezone.utc).replace(hour=datetime.now().hour + 24)
+        token_data = {
+            "sub": data.username,
+            "exp": access_token_expires
+        }
+        token = jwt.encode(token_data, SECRET_KEY, algorithm=ALGORITHM)
+        
+        return {
+            "access_token": token, 
+            "token_type": "bearer",
+            "user": {"email": ADMIN_EMAIL, "role": "admin"}
+        }
+    
+    raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect")
+
+# ========================
 # SEED DATA
 # ========================
-@api_router.post("/seed")
+@api_router.get("/seed")
 async def seed_database():
     """Seed the database with sample escape games"""
     sample_escapes = [
@@ -382,7 +441,7 @@ app.include_router(api_router)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

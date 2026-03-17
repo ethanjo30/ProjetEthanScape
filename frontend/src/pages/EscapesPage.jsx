@@ -4,7 +4,7 @@ import axios from "axios";
 import EscapeCard from "../components/EscapeCard";
 import { Filter, Search, Loader2 } from "lucide-react";
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
 const API = `${BACKEND_URL}/api`;
 
 const EscapesPage = () => {

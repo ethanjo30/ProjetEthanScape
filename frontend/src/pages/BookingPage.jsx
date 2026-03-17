@@ -30,7 +30,7 @@ import {
 import { format, addDays, isBefore, startOfDay } from "date-fns";
 import { fr } from "date-fns/locale";
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
 const API = `${BACKEND_URL}/api`;
 
 const BookingPage = () => {

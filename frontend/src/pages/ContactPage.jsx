@@ -57,8 +57,8 @@ const ContactPage = () => {
     {
       icon: <Mail className="w-6 h-6" />,
       label: "Email",
-      value: "ethanscape.servicesclients%40gmail.com",
-      href: "mailto:ethanscape.servicesclients%40gmail.com"
+      value: "ethanscape.servicesclients@gmail.com",
+      href: "mailto:ethanscape.servicesclients@gmail.com"
     },
     {
       icon: <MapPin className="w-6 h-6" />,
