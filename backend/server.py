@@ -16,6 +16,7 @@ from jose import jwt, JWTError
 from fastapi.security import OAuth2PasswordBearer
 from fastapi import Depends
 from fastapi import FastAPI, APIRouter, HTTPException, Depends
+from typing import List, Optional, Any
 
 # Chargement du .env
 ROOT_DIR = Path(__file__).parent
@@ -79,12 +80,13 @@ class EscapeGame(BaseModel):
     title: str
     description: str
     theme: str
-    difficulty: int  # 1-5
+    difficulty: int
     min_players: int
     max_players: int
     image_url: str
     is_active: bool = True
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    # Change datetime par Any ici pour accepter le format texte de MongoDB
+    created_at: Any = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class EscapeGameCreate(BaseModel):
     title: str
@@ -194,22 +196,15 @@ def calculate_price(num_people: int, duration: int) -> dict:
 # ========================
 # ROUTES - ESCAPES
 # ========================
-@api_router.get("/")
-async def root():
-    return {"message": "EthanScape API"}
-
 @api_router.get("/escapes", response_model=List[EscapeGame])
 async def get_escapes(theme: Optional[str] = None):
-    """Get all escape games, optionally filtered by theme"""
     query = {"is_active": True}
     if theme and theme != "all":
         query["theme"] = theme
     
-    escapes = await db.escapes.find(query, {"_id": 0}).to_list(100)
-    
-    for escape in escapes:
-        if isinstance(escape.get('created_at'), str):
-            escape['created_at'] = datetime.fromisoformat(escape['created_at'])
+    # On récupère les données sans essayer de les transformer manuellement
+    escapes_cursor = db.escapes.find(query, {"_id": 0})
+    escapes = await escapes_cursor.to_list(length=100)
     
     return escapes
 
@@ -261,30 +256,22 @@ async def get_pricing():
 # ========================
 @api_router.post("/reservations", response_model=Reservation)
 async def create_reservation(reservation: ReservationCreate):
-    """Create a new reservation"""
+    """Créer une nouvelle réservation"""
     price_info = calculate_price(reservation.num_people, reservation.duration)
-    
     reservation_obj = Reservation(
         **reservation.model_dump(),
         price_per_person=price_info["price_per_person"],
         total_price=price_info["total_price"]
     )
-    
     doc = reservation_obj.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
-    
     await db.reservations.insert_one(doc)
     return reservation_obj
-    
-@api_router.post("/reservations", response_model=List[Reservation])
+
+@api_router.get("/reservations", response_model=List[Reservation]) # <-- CHANGE POST PAR GET ICI
 async def get_reservations():
-    """Get all reservations"""
+    """Récupérer toutes les réservations pour l'admin"""
     reservations = await db.reservations.find({}, {"_id": 0}).to_list(1000)
-    
-    for res in reservations:
-        if isinstance(res.get('created_at'), str):
-            res['created_at'] = datetime.fromisoformat(res['created_at'])
-    
     return reservations
 
 @api_router.get("/available-slots")
@@ -352,7 +339,7 @@ async def login(data: LoginRequest):
 # ========================
 # SEED DATA
 # ========================
-@api_router.get("/seed")
+@api_router.post("/seed")
 async def seed_database():
     """Seed the database with sample escape games"""
     sample_escapes = [
@@ -437,7 +424,6 @@ async def seed_database():
     return {"message": "Database seeded successfully", "count": len(sample_escapes)}
 
 # Include the router in the main app
-app.include_router(api_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -446,6 +432,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(api_router)
 
 # Configure logging
 logging.basicConfig(

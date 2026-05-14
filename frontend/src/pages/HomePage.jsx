@@ -4,7 +4,7 @@ import axios from "axios";
 import { ArrowRight, Home, Users, Puzzle, Star, ChevronRight } from "lucide-react";
 import SpotlightCard from "../components/SpotlightCard";
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
 const API = `${BACKEND_URL}/api`;
 
 const LOGO_URL = "https://customer-assets.emergentagent.com/job_b18ee068-afca-4c96-adc4-5e2cfca2adc0/artifacts/fltpid2d_logo%20ethan%20scape.png";
