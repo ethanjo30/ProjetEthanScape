@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import axios from "axios";
 
-const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
+const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 const API = `${BACKEND_URL}/api`;
 
 const AuthContext = createContext(null);
@@ -33,11 +33,15 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = async (email, password) => {
-    const response = await axios.post(`${API}/auth/login`, { email, password });
-    const { token: newToken, user: userData } = response.data;
+    const response = await axios.post(`${API}/login`, { 
+    username: email, 
+    password: password 
+  });
+    const { access_token: newToken, user: userData } = response.data;
     
     localStorage.setItem("ethanscape_token", newToken);
     axios.defaults.headers.common["Authorization"] = `Bearer ${newToken}`;
+  
     setToken(newToken);
     setUser(userData);
     
