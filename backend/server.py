@@ -5,6 +5,7 @@ import os
 import logging
 import urllib.parse
 from pathlib import Path
+from datetime import datetime, timezone, timedelta
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import List, Optional
 import uuid
@@ -321,7 +322,7 @@ async def login(data: LoginRequest):
 
     if data.username == ADMIN_EMAIL and data.password == ADMIN_PASS:
         # Création du Token JWT
-        access_token_expires = datetime.now(timezone.utc).replace(hour=datetime.now().hour + 24)
+        access_token_expires = datetime.now(timezone.utc)+ timedelta(hours=24)
         token_data = {
             "sub": data.username,
             "exp": access_token_expires
@@ -331,10 +332,15 @@ async def login(data: LoginRequest):
         return {
             "access_token": token, 
             "token_type": "bearer",
-            "user": {"email": ADMIN_EMAIL, "role": "admin"}
+            "user": {
+                "email": ADMIN_EMAIL, 
+                "role": "admin",
+                "name": "Administrateur"
+            }
         }
     
     raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect")
+
 
 # ========================
 # SEED DATA

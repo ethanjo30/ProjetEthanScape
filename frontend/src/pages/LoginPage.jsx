@@ -23,24 +23,25 @@ const LoginPage = () => {
   });
 
   const handleLogin = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
+  e.preventDefault();
+  setIsLoading(true);
+  
+  try {
+    const user = await login(loginData.email, loginData.password);
+    toast.success(`Bienvenue ${user.name || 'Administrateur'} !`);
     
-    try {
-      const user = await login(loginData.email, loginData.password);
-      toast.success(`Bienvenue ${user.name} !`);
-      
-      if (user.is_admin) {
-        navigate("/admin");
-      } else {
-        navigate("/mon-compte");
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.detail || "Erreur de connexion");
-    } finally {
-      setIsLoading(false);
+    // ✅ Correction ici : on vérifie 'role' et non 'is_admin'
+    if (user.role === "admin") {
+      navigate("/admin");
+    } else {
+      navigate("/mon-compte");
     }
-  };
+  } catch (error) {
+    toast.error(error.response?.data?.detail || "Erreur de connexion");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleRegister = async (e) => {
     e.preventDefault();

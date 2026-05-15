@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Menu, X } from "lucide-react";
+import { User, Shield } from "lucide-react";
 
 const LOGO_URL = "https://customer-assets.emergentagent.com/job_b18ee068-afca-4c96-adc4-5e2cfca2adc0/artifacts/fltpid2d_logo%20ethan%20scape.png";
 
@@ -73,12 +74,12 @@ const Navbar = () => {
           {/* User/Auth Button */}
           {user ? (
             <Link
-              to={user.is_admin ? "/admin" : "/mon-compte"}
+              to={user.role === "admin" ? "/admin" : "/mon-compte"}
               data-testid="user-account-btn"
               className="flex items-center gap-2 bg-slate-800 text-white px-4 py-2 rounded-full text-sm hover:bg-slate-700 transition-all"
             >
-              {user.is_admin ? <Shield size={16} /> : <User size={16} />}
-              {user.is_admin ? "Admin" : user.name?.split(" ")[0]}
+              {user.role === "admin" ? <Shield size={16} /> : <User size={16} />}
+              {user.role === "admin" ? "Admin" : user.name?.split(" ")[0]}
             </Link>
           ) : (
             <Link
@@ -86,11 +87,11 @@ const Navbar = () => {
               data-testid="login-btn"
               className="flex items-center gap-2 bg-slate-800 text-white px-4 py-2 rounded-full text-sm hover:bg-slate-700 transition-all"
             >
-              <user size={16} />
+              <User size={16} />
               Connexion
             </Link>
           )}
-          
+
           <Link
             to="/reservation"
             data-testid="cta-reserver"

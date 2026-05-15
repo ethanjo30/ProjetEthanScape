@@ -33,20 +33,25 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = async (email, password) => {
+  try {
     const response = await axios.post(`${API}/login`, { 
-    username: email, 
-    password: password 
-  });
-    const { access_token: newToken, user: userData } = response.data;
+      username: email, // On envoie l'email sous le nom 'username'
+      password: password 
+    });
+
+    const { access_token, user: userData } = response.data;
     
-    localStorage.setItem("ethanscape_token", newToken);
-    axios.defaults.headers.common["Authorization"] = `Bearer ${newToken}`;
-  
-    setToken(newToken);
+    localStorage.setItem("ethanscape_token", access_token);
+    axios.defaults.headers.common["Authorization"] = `Bearer ${access_token}`;
+    
+    setToken(access_token);
     setUser(userData);
-    
     return userData;
-  };
+  } catch (error) {
+    console.error("Erreur détaillée :", error.response?.data);
+    throw error;
+  }
+};
 
   const register = async (data) => {
     const response = await axios.post(`${API}/auth/register`, data);
