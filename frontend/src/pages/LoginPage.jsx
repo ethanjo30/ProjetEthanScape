@@ -28,14 +28,13 @@ const LoginPage = () => {
   
   try {
     const user = await login(loginData.email, loginData.password);
-    toast.success(`Bienvenue ${user.name || 'Administrateur'} !`);
-    
-    // ✅ Correction ici : on vérifie 'role' et non 'is_admin'
-    if (user.role === "admin") {
-      navigate("/admin");
-    } else {
-      navigate("/mon-compte");
-    }
+
+// On redirige en fonction de l'email directement pour éviter les erreurs de rôles
+if (loginData.email === "admin@ethanscape.com") {
+  navigate("/admin");
+} else {
+  navigate("/mon-compte");
+}
   } catch (error) {
     toast.error(error.response?.data?.detail || "Erreur de connexion");
   } finally {

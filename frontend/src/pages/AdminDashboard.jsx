@@ -41,7 +41,7 @@ import {
   Shield
 } from "lucide-react";
 
-const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
+const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 const API = `${BACKEND_URL}/api`;
 
 const AdminDashboard = () => {
@@ -68,12 +68,18 @@ const AdminDashboard = () => {
   });
 
   useEffect(() => {
-    if (!authLoading && (!user || !user.is_admin)) {
-      navigate("/connexion");
-    } else if (user?.is_admin) {
-      fetchAllData();
-    }
-  }, [user, authLoading, navigate]);
+  // On ne fait rien tant que l'auth est en train de charger
+  if (authLoading) return;
+
+  // Si le chargement est fini et qu'on n'a pas d'admin
+  if (!user || user.role !== "admin") {
+    console.log("Accès refusé : ", user);
+    navigate("/connexion");
+  } else {
+    console.log("Accès Admin OK");
+    fetchAllData();
+  }
+}, [user, authLoading, navigate]);
 
   const fetchAllData = async () => {
     setLoading(true);

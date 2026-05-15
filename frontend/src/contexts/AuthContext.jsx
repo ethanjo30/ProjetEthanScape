@@ -12,13 +12,27 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(localStorage.getItem("ethanscape_token"));
 
   useEffect(() => {
-    if (token) {
-      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-      fetchUser();
-    } else {
+  const initAuth = async () => {
+    try {
+      const token = localStorage.getItem("ethanscape_token");
+      if (token) {
+        // Fixer le header pour toutes les futures requêtes axios
+        axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+        // ATTENDRE que fetchUser récupère les infos (role, email, etc.)
+        await fetchUser(); 
+      } else {
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error("Erreur lors de l'initialisation de l'auth:", error);
+      localStorage.removeItem("ethanscape_token"); // Optionnel: nettoie si le token est corrompu
       setLoading(false);
     }
-  }, [token]);
+  };
+
+  initAuth(); // 👈 Cette ligne lance réellement la vérification au démarrage
+}, []);
+
 
   const fetchUser = async () => {
     try {
