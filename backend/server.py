@@ -88,7 +88,7 @@ async def get_all_contacts():
 conf = ConnectionConfig(
     MAIL_USERNAME=os.getenv('MAIL_USERNAME'),
     MAIL_PASSWORD=os.getenv('MAIL_PASSWORD'), 
-    MAIL_FROM="ethanscape.servicesclients@gmail.com",
+    MAIL_FROM="contact@ethanscape.com",
     MAIL_PORT=587,
     MAIL_SERVER="smtp-relay.brevo.com",
     MAIL_STARTTLS=True,
