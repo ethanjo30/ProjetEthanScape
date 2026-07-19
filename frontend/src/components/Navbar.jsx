@@ -23,7 +23,7 @@ const Navbar = () => {
   const navLinks = [
     { path: "/", label: "Accueil" },
     { path: "/escapes", label: "Nos Escapes" },
-    { path: "/reservation", label: "Réserver" },
+    { path: "/reservation", label: "Réserver / Devis" },
     { path: "/contact", label: "Contact" },
   ];
 

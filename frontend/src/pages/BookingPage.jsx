@@ -257,6 +257,25 @@ const BookingPage = () => {
 
       console.log("Données envoyées au serveur :", JSON.stringify(reservationData, null, 2));
 
+      console.log("Valeur de l'URL API :", API); 
+console.log("Données envoyées :", reservationData);
+
+try {
+    await axios.post(`${API}/reservations`, reservationData);
+    toast.success("Réservation envoyée avec succès !");
+    setStep(5);
+} catch (error) {
+    // Affiche l'erreur complète dans la console pour déboguer
+    console.error("Erreur complète :", error);
+    
+    if (error.response) {
+        console.log("Statut serveur :", error.response.status);
+        console.log("Détails renvoyés par FastAPI :", error.response.data);
+    }
+    toast.error("Erreur serveur, consultez la console F12");
+}
+
+
       await axios.post(`${API}/reservations`, reservationData);
       toast.success("Réservation envoyée avec succès !");
       setStep(5); // Passage à l'écran de succès
