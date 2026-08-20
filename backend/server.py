@@ -251,16 +251,15 @@ async def get_escapes(theme: Optional[str] = None):
 
 @api_router.get("/escapes/{escape_id}", response_model=EscapeGame)
 async def get_escape(escape_id: str):
-# On cherche soit par 'id' personnalisé, soit par '_id'
-escape = await db.escapes.find_one({"$or": [{"id": escape_id}, {"_id": escape_id}]}, {"_id": 0})
-if not escape:
-    raise HTTPException(status_code=404, detail="Escape game non trouvé")
+    # Les lignes ci-dessous DOIVENT avoir 4 espaces de décalage
+    escape = await db.escapes.find_one({"id": escape_id}, {"_id": 0})
+    if not escape:
+        raise HTTPException(status_code=404, detail="Escape game non trouvé")
     
-if isinstance(escape.get('created_at'), str):
-    escape['created_at'] = datetime.fromisoformat(escape['created_at'])
+    if isinstance(escape.get('created_at'), str):
+        escape['created_at'] = datetime.fromisoformat(escape['created_at'])
     
-return escape
-
+    return escape
 @api_router.post("/escapes", response_model=EscapeGame) 
 async def create_escape(escape: EscapeGameCreate, token: str = Depends(oauth2_scheme)):
     """Seul un admin connecté peut créer un escape game"""
