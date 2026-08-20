@@ -241,18 +241,18 @@ async def get_escapes(theme: Optional[str] = None):
     # On retire le filtre pour voir si vos données s'affichent
     query = {} 
     
-    if theme and theme != "all":
-        query["theme"] = theme
-    
-    escapes_cursor = db.escapes.find(query, {"_id": 0})
-    escapes = await escapes_cursor.to_list(length=100)
-    
-    return escapes
+    escapes_cursor = db.escapes.find(query)
+    escapes = []
+    async for doc in escapes_cursor:
 
-@api_router.get("/escapes/{escape_id}", response_model=EscapeGame)
+        if "id" not in doc or not doc["id"]:
+            doc["id"] = str(doc["_id"])
+        escapes.append(doc)
+
+    @api_router.get("/escapes/{escape_id}", response_model=EscapeGame)
 async def get_escape(escape_id: str):
-    """Get a specific escape game by ID"""
-    escape = await db.escapes.find_one({"id": escape_id}, {"_id": 0})
+    # On cherche soit par 'id' personnalisé, soit par '_id'
+    escape = await db.escapes.find_one({"$or": [{"id": escape_id}, {"_id": escape_id}]}, {"_id": 0})
     if not escape:
         raise HTTPException(status_code=404, detail="Escape game non trouvé")
     
