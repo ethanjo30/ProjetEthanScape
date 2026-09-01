@@ -249,6 +249,8 @@ async def get_escapes(theme: Optional[str] = None):
             doc["id"] = str(doc["_id"])
         escapes.append(doc)
 
+    return escapes
+
 @api_router.get("/escapes/{escape_id}", response_model=EscapeGame)
 async def get_escape(escape_id: str):
     # Les lignes ci-dessous DOIVENT avoir 4 espaces de décalage
