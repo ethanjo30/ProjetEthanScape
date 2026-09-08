@@ -25,8 +25,7 @@ const EscapesPage = () => {
   const fetchThemes = async () => {
     try {
       const response = await axios.get(`${API}/themes`);
-      const data = response.data.themes || response.data || [];
-      setThemes(Array.isArray(data) ? data : []);
+      setThemes(response.data.themes || []);
     } catch (error) {
       console.error("Error fetching themes:", error);
     }
@@ -35,13 +34,11 @@ const EscapesPage = () => {
   const fetchEscapes = async () => {
     setLoading(true);
     try {
-      const themeParam = typeof selectedTheme === "object" ? selectedTheme.name || selectedTheme.id : selectedTheme;
       const url = selectedTheme === "all" 
         ? `${API}/escapes` 
         : `${API}/escapes?theme=${encodeURIComponent(selectedTheme)}`;
       const response = await axios.get(url);
-      const data = response.data.escapes || response.data || [];
-      setEscapes(Array.isArray(data) ? data : []);
+      setEscapes(response.data);
     } catch (error) {
       console.error("Error fetching escapes:", error);
     } finally {
@@ -49,12 +46,9 @@ const EscapesPage = () => {
     }
   };
 
-  const filteredEscapes = escapes.filter(escape => {
-    const title = escape?.title || "";
-    const description = escape?.description || "";
-    const query = searchQuery.toLowerCase();
-    
-    return title.toLowerCase().includes(query) || description.toLowerCase().includes(query);
+  const filteredEscapes = escapes.filter(escape => 
+    escape.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    escape.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
