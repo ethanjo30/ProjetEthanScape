@@ -241,6 +241,11 @@ async def get_escapes(theme: Optional[str] = None):
     # On retire le filtre pour voir si vos données s'affichent
     query = {} 
     
+    # Prise en compte du paramètre theme s'il est renseigné et différent de "all"
+    if theme and theme.lower() != "all":
+        # Recherche insensible à la casse avec regex (ex: "marvel" trouvera "Marvel")
+        query["theme"] = {"$regex": f"^{theme}$", "$options": "i"}
+
     escapes_cursor = db.escapes.find(query)
     escapes = []
     async for doc in escapes_cursor:
@@ -250,6 +255,7 @@ async def get_escapes(theme: Optional[str] = None):
         escapes.append(doc)
 
     return escapes
+
 
 @api_router.get("/escapes/{escape_id}", response_model=EscapeGame)
 async def get_escape(escape_id: str):
