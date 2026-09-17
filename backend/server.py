@@ -63,7 +63,7 @@ class EscapeGame(BaseModel):
     title: str
     description: str
     theme: str
-    difficulty: str
+    difficulty: int
     min_players: int
     max_players: int
     image_url: str
@@ -74,7 +74,7 @@ class EscapeGameCreate(BaseModel):
     title: str
     description: str
     theme: str
-    difficulty: str
+    difficulty: int
     min_players: int
     max_players: int
     image_url: str
