@@ -66,7 +66,7 @@ const Navbar = () => {
         <div></div>
 
       </div>
-      
+
       {/* Mobile Menu Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
@@ -75,28 +75,28 @@ const Navbar = () => {
       >
         {isOpen ? <X size={24} /> : <Menu size={24} />}
       </button>
-    
 
-      {/* Mobile Navigation */ }
-  <div
-    className={`md:hidden glass absolute top-full left-0 right-0 overflow-hidden transition-all duration-300 ${isOpen ? "max-h-96 py-6" : "max-h-0"
-      }`}
-  >
-    <div className="flex flex-col items-center gap-6 px-6">
-      {navLinks.map((link) => (
-        <Link
-          key={link.path}
-          to={link.path}
-          onClick={() => setIsOpen(false)}
-          data-testid={`mobile-nav-${link.label.toLowerCase().replace(/s+/g, '-')}`}
-          className={`text-lg font-medium transition-colors ${isActive(link.path) ? "text-amber-400" : "text-white"
-            }`}
-        >
-          {link.label}
-        </Link>
-      ))}
-    </div>
-  </div>
+
+      {/* Mobile Navigation */}
+      <div
+        className={`md:hidden glass absolute top-full left-0 right-0 overflow-hidden transition-all duration-300 ${isOpen ? "max-h-96 py-6" : "max-h-0"
+          }`}
+      >
+        <div className="flex flex-col items-center gap-6 px-6">
+          {navLinks.map((link) => (
+            <Link
+              key={link.path}
+              to={link.path}
+              onClick={() => setIsOpen(false)}
+              data-testid={`mobile-nav-${link.label.toLowerCase().replace(/s+/g, '-')}`}
+              className={`text-lg font-medium transition-colors ${isActive(link.path) ? "text-amber-400" : "text-white"
+                }`}
+            >
+              {link.label}
+            </Link>
+          ))}
+        </div>
+      </div>
     </nav >
   );
 };

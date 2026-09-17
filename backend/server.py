@@ -1,5 +1,4 @@
-# inmport de toute les fonctionnalité
-from fastapi import FastAPI, APIRouter, HTTPException
+from fastapi import FastAPI, APIRouter, HTTPException, Depends
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
@@ -8,17 +7,13 @@ import urllib.parse
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
-from typing import List, Optional
+from typing import List, Optional, Any
 import uuid
-from datetime import datetime, timezone
 from dotenv import load_dotenv
 from fastapi_mail import ConnectionConfig, FastMail, MessageSchema, MessageType
 from passlib.context import CryptContext
 from jose import jwt, JWTError
 from fastapi.security import OAuth2PasswordBearer
-from fastapi import Depends
-from fastapi import FastAPI, APIRouter, HTTPException, Depends
-from typing import List, Optional, Any
 
 # Chargement du .env
 ROOT_DIR = Path(__file__).parent
@@ -28,7 +23,7 @@ load_dotenv(ROOT_DIR / '.env')
 mongo_url = os.getenv('MONGO_URL')
 db_name = os.getenv('DB_NAME')
 
-#si il n'est pas trouver mettre message d'erreur 
+# si il n'est pas trouver mettre message d'erreur 
 if not mongo_url:
     raise RuntimeError("ERREUR : MONGO_URL est introuvable dans le fichier .env")
 
@@ -38,7 +33,6 @@ db = client["EthanScape"]
 
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
-
 
 # Configuration Email avec brevo
 conf = ConnectionConfig(
@@ -127,31 +121,24 @@ class ContactMessageCreate(BaseModel):
 # ROUTES - ESCAPES
 # ========================
 
-# retourne la liste des escape trouver dans la bdd
 @api_router.get("/escapes", response_model=List[EscapeGame])
 async def get_escapes(theme: Optional[str] = None):
-    # On retire le filtre pour voir si vos données s'affichent
     query = {} 
     
-    # Prise en compte du paramètre theme s'il est renseigné et différent de "all"
     if theme and theme.lower() != "all":
-        # Recherche insensible à la casse avec regex (ex: "marvel" trouvera "Marvel")
         query["theme"] = {"$regex": f"^{theme}$", "$options": "i"}
 
     escapes_cursor = db.escapes.find(query)
     escapes = []
     async for doc in escapes_cursor:
-
         if "id" not in doc or not doc["id"]:
             doc["id"] = str(doc["_id"])
         escapes.append(doc)
 
     return escapes
 
-# recupere l'escape selectionné grace a son id 
 @api_router.get("/escapes/{escape_id}", response_model=EscapeGame)
 async def get_escape(escape_id: str):
-
     escape = await db.escapes.find_one({"id": escape_id}, {"_id": 0})
     if not escape:
         raise HTTPException(status_code=404, detail="Escape game non trouvé")
@@ -161,10 +148,8 @@ async def get_escape(escape_id: str):
     
     return escape
 
-# met une seul fois le theme pour la recherche par theme
 @api_router.get("/themes")
 async def get_themes():
-    """Get all unique themes"""
     themes = await db.escapes.distinct("theme", {"is_active": True})
     return {"themes": themes}
 
@@ -173,30 +158,23 @@ async def get_themes():
 # ========================
 @api_router.post("/reservations", response_model=Reservation)
 async def create_reservation(reservation: ReservationCreate):
-    """Créer une nouvelle réservation et envoyer une notification par e-mail"""
-    
-    # Création de l'objet de réservation complet
     reservation_obj = Reservation(
         **reservation.model_dump(),
     )
     
-    # envoi des donée recueilli a mongo
     doc = reservation_obj.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
     
-    # Enregistrement dans MongoDB
     await db.reservations.insert_one(doc)
 
-    # 🚨 BLOC D'ENVOI DE L'E-MAIL DE NOTIFICATION 🚨
     try:
         html_content = f"""
         <html>
             <body style="font-family: Arial, sans-serif; background-color: #0f172a; color: #ffffff; padding: 20px;">
-                <div style="max-width: 600px; margin: 0 auto; background-color: #1e293b; padding: 30px; border: 1px solid #334155; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+                <div style="max-width: 600px; margin: 0 auto; background-color: #1e293b; padding: 30px; border: 1px solid #334155; border-radius: 12px;">
                     <h1 style="color: #fbbf24; margin-bottom: 10px; font-size: 24px;">🚨 Nouvelle réservation reçue !</h1>
                     <p style="color: #94a3b8; font-size: 16px;">Une nouvelle session vient d'être validée sur l'application EthanScape.</p>
                     <hr style="border: 0; border-top: 1px solid #334155; margin: 20px 0;" />
-                    
                     <h3 style="color: #fbbf24; font-size: 18px; margin-bottom: 15px;">Détails de la session :</h3>
                     <table style="width: 100%; color: #e2e8f0; font-size: 15px; border-collapse: collapse; margin-bottom: 25px;">
                         <tr>
@@ -219,12 +197,7 @@ async def create_reservation(reservation: ReservationCreate):
                             <td style="padding: 8px 0; font-weight: bold; color: #94a3b8;">Participants :</td>
                             <td style="padding: 8px 0; color: #ffffff;">{reservation_obj.num_people} personnes</td>
                         </tr>
-                        <tr style="border-top: 1px solid #334155;">
-                            <td style="padding: 15px 0 0 0; font-weight: bold; color: #fbbf24; font-size: 18px;">Montant Total :</td>
-                            <td style="padding: 15px 0 0 0; font-weight: bold; color: #fbbf24; font-size: 22px;">{reservation_obj.total_price}€</td>
-                        </tr>
                     </table>
-
                     <h3 style="color: #fbbf24; font-size: 18px; margin-bottom: 15px;">Coordonnées du client :</h3>
                     <table style="width: 100%; color: #e2e8f0; font-size: 15px; border-collapse: collapse;">
                         <tr>
@@ -257,7 +230,6 @@ async def create_reservation(reservation: ReservationCreate):
         </html>
         """
 
-        # envoie message sur boite mail
         message = MessageSchema(
             subject=f"🚨 Nouvelle réservation : {reservation_obj.escape_title}",
             recipients=["ethanscape.servicesclients@gmail.com"],
@@ -268,16 +240,13 @@ async def create_reservation(reservation: ReservationCreate):
         await fastmail.send_message(message)
         logging.info("✉️ E-mail d'alerte admin envoyé avec l'adresse hiérarchisée !")
 
-    # message d'erreur 
     except Exception as e:
         logging.error(f"❌ Échec de l'envoi de l'e-mail de notification : {e}")
-        pass
 
     return reservation_obj
-# recupere et affiche si les jour est crénaux son libre 
+
 @api_router.get("/available-slots")
 async def get_available_slots(date: str):
-    """Récupérer les créneaux disponibles pour une date donnée"""
     base_slots = ["09:00", "10:00", "11:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00"]
     query = {"date": date, "status": {"$ne": "cancelled"}}
         
@@ -297,21 +266,9 @@ async def get_available_slots(date: str):
     
     return {"date": date, "slots": slots}
 
-    @api_router.get("/available-slots")
-
-
-    class ContactMessageCreate(BaseModel):
-        name: str
-        email: EmailStr
-        phone: Optional[str] = None
-        subject: str
-        message: str
-
 @api_router.post("/contact")
 async def handle_contact(contact: ContactMessageCreate):
-    """Reçoit les messages du formulaire de contact"""
     try:
-        # mise a jour ou création du contact dans mongo
         await db.contacts.update_one(
             {"email": contact.email}, 
             {
@@ -327,7 +284,6 @@ async def handle_contact(contact: ContactMessageCreate):
             upsert=True
         )
 
-        # envoi du message sur la boite mail 
         message = MessageSchema(
             subject=f"Nouveau contact : {contact.subject}",
             recipients=["ethanscape.servicesclients@gmail.com"],
@@ -336,7 +292,6 @@ async def handle_contact(contact: ContactMessageCreate):
         )
         
         await fastmail.send_message(message)
-        
         logging.info(f"✅ E-mail envoyé avec succès pour : {contact.name}")
         
         return {"message": "Message reçu avec succès !"}
@@ -344,7 +299,6 @@ async def handle_contact(contact: ContactMessageCreate):
         logging.error(f"Erreur serveur : {e}")
         raise HTTPException(status_code=500, detail="Erreur lors de l'enregistrement du message")
 
-# sécurité react fast api
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -355,7 +309,6 @@ app.add_middleware(
 
 app.include_router(api_router)
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
