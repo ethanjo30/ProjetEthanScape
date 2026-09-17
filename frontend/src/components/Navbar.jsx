@@ -23,7 +23,7 @@ const Navbar = () => {
   const navLinks = [
     { path: "/", label: "Accueil" },
     { path: "/escapes", label: "Nos Escapes" },
-    { path: "/reservation", label: "Réserver / Devis" },
+    { path: "/reservation", label: "Devis" },
     { path: "/contact", label: "Contact" },
   ];
 
@@ -66,29 +66,7 @@ const Navbar = () => {
         <div></div>
 
       </div>
-      {/* User/Auth Button */}
-      {/*{user ? (
-          <Link
-            to={user.role === "admin" ? "/admin" : "/mon-compte"}
-            data-testid="user-account-btn"
-            className="flex items-center gap-2 bg-slate-800 text-white px-4 py-2 rounded-full text-sm hover:bg-slate-700 transition-all"
-          >
-            {user.role === "admin" ? <Shield size={16} /> : <User size={16} />}
-            {user.role === "admin" ? "Admin" : user.name?.split(" ")[0]}
-          </Link>
-        ) : (
-          <Link
-            to="/connexion"
-            data-testid="login-btn"
-            className="flex items-center gap-2 bg-slate-800 text-white px-4 py-2 rounded-full text-sm hover:bg-slate-700 transition-all"
-          >
-            <User size={16} />
-            Connexion
-          </Link>
-        )}*/}
-
-
-
+      
       {/* Mobile Menu Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
@@ -117,35 +95,6 @@ const Navbar = () => {
           {link.label}
         </Link>
       ))}
-
-      {/*{user ? (
-            <Link
-              to={user.is_admin ? "/admin" : "/mon-compte"}
-              onClick={() => setIsOpen(false)}
-              className="flex items-center gap-2 text-lg text-amber-400"
-            >
-              {user.is_admin ? <Shield size={18} /> : <User size={18} />}
-              {user.is_admin ? "Administration" : "Mon compte"}
-            </Link>
-          ) : (
-            <Link
-              to="/connexion"
-              onClick={() => setIsOpen(false)}
-              className="flex items-center gap-2 text-lg text-white"
-            >
-              <User size={18} />
-              Connexion
-            </Link>
-          )}
-
-          <Link
-            to="/reservation"
-            onClick={() => setIsOpen(false)}
-            data-testid="mobile-cta-reserver"
-            className="bg-amber-400 text-slate-900 px-8 py-3 rounded-full font-semibold hover:bg-amber-300 transition-all"
-          >
-            Réserver maintenant
-          </Link>*/}
     </div>
   </div>
     </nav >

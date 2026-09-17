@@ -7,28 +7,20 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Textarea } from "../components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../components/ui/select";
-import usePricing from "../hooks/usePricing";
 import { AlertCircle } from "lucide-react";
 import {
   CalendarDays,
   Users,
   Clock,
-  Euro,
   MapPin,
   CheckCircle2,
   Loader2,
   ChevronRight,
   ChevronLeft
 } from "lucide-react";
-import { format, addDays, isBefore, startOfDay } from "date-fns";
+import { format, isBefore, startOfDay } from "date-fns";
 import { fr } from "date-fns/locale";
+
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "https://projetethanscape.onrender.com";
 const API = `${BACKEND_URL}/api`;
@@ -39,9 +31,14 @@ const ALL_SLOTS = ["09:00", "10:00", "11:00", "14:00", "15:00", "16:00", "17:00"
 const BookingPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { calculatePrice } = usePricing();
 
   const [step, setStep] = useState(1);
+  const [sessionType, setSessionType] = useState("existing");
+  const [selectedEscape, setSelectedEscape] = useState(null);
+  const [selectedTheme, setSelectedTheme] = useState("all");
+  const [customTheme, setCustomTheme] = useState("");
+  const [customDetail, setCustomDetail] = useState("");
+
   const [escapes, setEscapes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -49,7 +46,6 @@ const BookingPage = () => {
   const [slotsLoading, setSlotsLoading] = useState(false);
 
   // Form state
-  const [selectedEscape, setSelectedEscape] = useState(null);
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedSlot, setSelectedSlot] = useState("");
   const [duration, setDuration] = useState(60);
@@ -64,8 +60,6 @@ const BookingPage = () => {
     message: ""
   });
 
-  // Price calculation
-  const priceInfo = calculatePrice(numPeople, duration);
 
   useEffect(() => {
     fetchEscapes();
@@ -82,6 +76,7 @@ const BookingPage = () => {
     }
   }, [searchParams, escapes]);
 
+  /*mise à jours des créneau de reservation*/
   useEffect(() => {
     if (selectedDate) {
       fetchAvailableSlots(format(selectedDate, "yyyy-MM-dd"));
@@ -89,6 +84,7 @@ const BookingPage = () => {
     }
   }, [selectedDate]);
 
+  /*recuperation de la liste de escape */
   const fetchEscapes = async () => {
     try {
       const response = await axios.get(`${API}/escapes`);
@@ -101,61 +97,53 @@ const BookingPage = () => {
     }
   };
 
+  /** chargement des creneau dispo par rapport a la date selectionné */
   const fetchAvailableSlots = async (date) => {
     setSlotsLoading(true);
-    setSelectedSlot(""); // IMPORTANT : réinitialiser le slot sélectionné lors d'un changement de date
+    setSelectedSlot("");
     try {
       const response = await axios.get(`${API}/available-slots?date=${date}`);
       setAvailableSlots(response.data.slots || []);
 
     } catch (error) {
-      // ...
+
     } finally {
       setSlotsLoading(false);
     }
   };
 
-
+  /** Regex */
   const isPhoneValid = (phone) => {
     const phoneRegex = /^[0-9]{10}$/;
-    // Vérifie si c'est bien 10 chiffres, ET que ce n'est pas le numéro interdit, ET que ça ne commence pas par 08
     return phoneRegex.test(phone) && phone !== "0606060606" && !phone.startsWith("08");
   };
 
-  // Validation Email corrigée
   const isEmailValid = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
   };
 
-  // Validation Nom corrigée
   const isNameValid = (name) => {
-    // Autorise lettres, espaces, tirets, apostrophes
     const nameRegex = /^[a-zA-ZÀ-ÿ\s'-]{2,}$/;
     return name && nameRegex.test(name.trim());
   };
 
-  // Validation Adresse corrigée
   const isAddressValid = (address) => {
-    // Utilise \\s pour bien capturer l'espace
     const addressRegex = /^[a-zA-Z0-9À-ÿ\s,'-]{5,}$/;
     return address && addressRegex.test(address.trim());
   };
 
-  // Validation code postal : Correct (5 chiffres)
   const isZipCodeValid = (zip) => {
     const zipRegex = /^[0-9]{5}$/;
     return zipRegex.test(zip);
   };
 
-  // Validation ville : autorise lettres, espaces, tirets
   const isCityValid = (city) => {
-    // Remplacement de 's' par '\\s'
     const cityRegex = /^[a-zA-ZÀ-ÿ\\s-]{2,}$/;
     return city && cityRegex.test(city.trim());
   };
 
-
+  /** calcul des creneaux horaire a bloquer */
   const getBlockedSlots = (slotTime) => {
     const slotIndex = ALL_SLOTS.indexOf(slotTime);
     if (slotIndex === -1) return [];
@@ -182,9 +170,7 @@ const BookingPage = () => {
     return blocked;
   };
 
-  /**
-   * Vérifie si un créneau peut être sélectionné (lui + les suivants doivent être libres)
-   */
+  /** Vérifie si un créneau peut être sélectionné (lui + les suivants doivent être libres)*/
   const canSelectSlot = (slotTime) => {
     const slotsNeeded = getBlockedSlots(slotTime, duration);
 
@@ -195,21 +181,22 @@ const BookingPage = () => {
     });
   };
 
-  /**
-   * Vérifie si un créneau serait bloqué par la sélection actuelle
-   */
+  /** Vérifie si un créneau serait bloqué par la sélection actuelle*/
   const isSlotBlockedBySelection = (slotTime) => {
     if (!selectedSlot) return false;
     const blockedSlots = getBlockedSlots(selectedSlot, duration);
     return blockedSlots.includes(slotTime) && slotTime !== selectedSlot;
   };
 
-
+  const themes = ["all", ...new Set(escapes.map((e) => e.theme))];
+  const filteredEscapes = selectedTheme === "all"
+    ? escapes
+    : escapes.filter((e) => e.theme === selectedTheme);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // 1. Validation uniquement lors du clic sur le bouton
+    // 1. Validations
     if (!isEmailValid(formData.email)) {
       toast.error("Format d'adresse email invalide.");
       return;
@@ -218,7 +205,6 @@ const BookingPage = () => {
       toast.error("Numéro de téléphone invalide ou non autorisé.");
       return;
     }
-
     if (!isNameValid(formData.name)) {
       toast.error("Veuillez inscrire votre nom et prenom.");
       return;
@@ -240,76 +226,63 @@ const BookingPage = () => {
 
     try {
       const reservationData = {
-        escape_id: selectedEscape.id,
-        escape_title: selectedEscape.title, // N'oubliez pas d'ajouter ceci, requis par votre backend
+        escape_id: sessionType === "existing" ? selectedEscape.id : "custom-session",
+        escape_title: sessionType === "existing" ? selectedEscape.title : `Sur-mesure: ${customTheme}`,
         client_name: formData.name,
         client_email: formData.email,
         client_phone: formData.phone,
         street_address: formData.street_address,
-        zip_code: String(formData.zip_code), // FORCE la conversion en chaîne de caractères
+        zip_code: String(formData.zip_code),
         city: formData.city,
         date: format(selectedDate, "yyyy-MM-dd"),
         time_slot: selectedSlot,
         duration: parseInt(duration, 10),
         num_people: parseInt(numPeople, 10),
-        message: formData.message || null
+        message: sessionType === "custom" 
+          ? `[SUR-MESURE] Thème: ${customTheme} | Détails: ${customDetail} \n\n Message: ${formData.message || ''}` 
+          : (formData.message || null)
       };
 
-      console.log("Données envoyées au serveur :", JSON.stringify(reservationData, null, 2));
-
-      console.log("Valeur de l'URL API :", API); 
-console.log("Données envoyées :", reservationData);
-
-try {
-    await axios.post(`${API}/reservations`, reservationData);
-    toast.success("Réservation envoyée avec succès !");
-    setStep(5);
-} catch (error) {
-    // Affiche l'erreur complète dans la console pour déboguer
-    console.error("Erreur complète :", error);
-    
-    if (error.response) {
-        console.log("Statut serveur :", error.response.status);
-        console.log("Détails renvoyés par FastAPI :", error.response.data);
-    }
-    toast.error("Erreur serveur, consultez la console F12");
-}
-
-
+      // Un seul appel unique vers l'API
       await axios.post(`${API}/reservations`, reservationData);
+      
       toast.success("Réservation envoyée avec succès !");
       setStep(5); // Passage à l'écran de succès
     } catch (error) {
-      // C'est ici que le serveur envoie le détail de l'erreur 422
       if (error.response && error.response.data) {
-        console.log("Détails de l'erreur serveur :", error.response.data);
-        // Si votre API renvoie une liste d'erreurs, affichez-la :
-        if (error.response.data.errors) {
-          console.table(error.response.data.errors);
-        }
+        console.error("Détails de l'erreur serveur :", error.response.data);
       } else {
         console.error("Erreur:", error);
       }
       toast.error("Erreur 422 : Les données envoyées sont invalides.");
-    }
-  }
-
-  const canProceed = () => {
-    switch (step) {
-      case 1: return selectedEscape !== null;
-      case 2: return selectedDate !== null && selectedSlot !== "";
-      case 3: return numPeople >= 4 && numPeople <= 39;
-      case 4: return (
-        formData.name.length > 0 &&
-        formData.email.length > 0 &&
-        formData.phone.length > 0 &&
-        formData.street_address.length > 0 &&
-        formData.zip_code.length > 0 &&
-        formData.city.length > 0
-      );
-      default: return false;
+    } finally {
+      setSubmitting(false);
     }
   };
+
+const canProceed = () => {
+  switch (step) {
+    case 1:
+      if (sessionType === "existing") {
+        return selectedEscape !== null;
+      }
+      if (sessionType === "custom") {
+        return customTheme.trim() !== "" && customDetail.trim() !== "";
+      }
+      return false;
+    case 2: return selectedDate !== null && selectedSlot !== "";
+    case 3: return numPeople >= 4 && numPeople <= 39;
+    case 4: return (
+      formData.name.length > 0 &&
+      formData.email.length > 0 &&
+      formData.phone.length > 0 &&
+      formData.street_address.length > 0 &&
+      formData.zip_code.length > 0 &&
+      formData.city.length > 0
+    );
+    default: return false;
+  }
+};
 
   const disabledDays = (date) => {
     return isBefore(date, startOfDay(new Date()));
@@ -325,8 +298,12 @@ try {
     );
   }
 
+  /** choix utilisateur */
+  const reservationData = {
+    session_type: sessionType, 
+  };
 
-  // Success screen
+  /** recapitulatif des donnée pour l'envoi du mail */
   if (step === 5) {
     return (
       <div data-testid="booking-success" className="min-h-screen pt-24 pb-16 flex items-center justify-center">
@@ -338,7 +315,7 @@ try {
             Réservation confirmée !
           </h1>
           <p className="text-slate-400 mb-8">
-            Nous avons bien reçu votre demande. Vous recevrez un email de confirmation dans les prochaines 48 heures.
+            Nous avons bien reçu votre demande. Vous recevrez un email de confirmation prochainement .
           </p>
           <div className="bg-slate-900/50 rounded-xl p-6 border border-slate-800 text-left mb-8">
             <h3 className="text-white font-semibold mb-4">Récapitulatif</h3>
@@ -358,12 +335,6 @@ try {
               <p className="text-slate-400">
                 <span className="text-slate-300">Participants:</span> {numPeople} personnes
               </p>
-              <p className="text-amber-400 font-semibold mt-4">
-                Total estimé: {priceInfo.totalPrice}€ *
-              </p>
-              <p className="text-slate-500 text-xs mt-2 italic">
-                  * Au prix affiché s'ajouteront les frais de déplacement.
-                </p>
             </div>
           </div>
           <Button
@@ -420,418 +391,493 @@ try {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2">
+
             {/* Step 1: Select Escape */}
+            {/* Étape 1 : Choix du type de session */}
             {step === 1 && (
-              <div data-testid="step-1" className="space-y-6">
-                <h2 className="text-2xl font-bold text-white font-['Playfair_Display']">
-                  Choisissez votre escape
-                </h2>
-                <div className="grid sm:grid-cols-2 gap-4">
-                  {escapes.map((escape) => (
-                    <button
-                      key={escape.id}
-                      onClick={() => setSelectedEscape(escape)}
-                      data-testid={`select-escape-${escape.id}`}
-                      className={`p-4 rounded-xl border text-left transition-all ${selectedEscape?.id === escape.id
-                        ? "border-amber-400 bg-amber-400/10"
-                        : "border-slate-800 bg-slate-900/50 hover:border-slate-700"
-                        }`}
-                    >
-                      <div className="w-full h-42 flex items-center justify-center overflow-hidden rounded-lg bg-gray-900 border border-gray-800 mb-3">
-                        <img
-                          src={escape.image_url}
-                          alt={escape.title}
-                          className="max-h-full max-w-full object-contain"
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                  <button
+                    type="button"
+                    onClick={() => setSessionType("existing")}
+                    className={`p-5 rounded-xl text-left border transition-all duration-200 ${
+                      sessionType === "existing"
+                        ? "bg-amber-500/10 border-amber-500 text-amber-400 shadow-lg shadow-amber-500/10"
+                        : "bg-slate-800/40 border-slate-700/60 text-slate-300 hover:border-slate-500 hover:bg-slate-800/70"
+                    }`}
+                  >
+                    <div className="font-semibold text-base mb-1">Session identique</div>
+                    <div className="text-xs text-slate-400">Thème, durée et participants pré-définis</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSessionType("custom")}
+                    className={`p-5 rounded-xl text-left border transition-all duration-200 ${
+                      sessionType === "custom"
+                        ? "bg-amber-500/10 border-amber-500 text-amber-400 shadow-lg shadow-amber-500/10"
+                        : "bg-slate-800/40 border-slate-700/60 text-slate-300 hover:border-slate-500 hover:bg-slate-800/70"
+                    }`}
+                  >
+                    <div className="font-semibold text-base mb-1">Choix personnalisé</div>
+                    <div className="text-xs text-slate-400">Configurez sur-mesure votre expérience</div>
+                  </button>
+                </div>
+
+                {/* Si l'utilisateur choisit une session existante */}
+                {sessionType === "existing" && (
+                  <div data-testid="step-1" className="space-y-6">
+                    <h2 className="text-2xl font-bold text-white font-['Playfair_Display']">
+                      Choisissez votre escape
+                    </h2>
+
+                    <div className="flex flex-wrap gap-2">
+                      {themes.map((theme) => (
+                        <button
+                          key={theme}
+                          type="button"
+                          onClick={() => setSelectedTheme(theme)}
+                          className={`px-4 py-2 rounded-lg text-sm border transition-all ${
+                            selectedTheme === theme
+                              ? "bg-amber-500 text-slate-950 font-semibold border-amber-500"
+                              : "bg-slate-900/50 text-slate-300 border-slate-800 hover:border-slate-700"
+                          }`}
+                        >
+                          {theme === "all" ? "Tous les thèmes" : theme}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      {filteredEscapes.map((escape) => (
+                        <button
+                          key={escape.id}
+                          onClick={() => setSelectedEscape(escape)}
+                          data-testid={`select-escape-${escape.id}`}
+                          className={`p-4 rounded-xl border text-left transition-all ${
+                            selectedEscape?.id === escape.id
+                              ? "border-amber-400 bg-amber-400/10"
+                              : "border-slate-800 bg-slate-900/50 hover:border-slate-700"
+                          }`}
+                        >
+                          <div className="w-full h-42 flex items-center justify-center overflow-hidden rounded-lg bg-gray-900 border border-gray-800 mb-3">
+                            <img
+                              src={escape.image_url}
+                              alt={escape.title}
+                              className="max-h-full max-w-full object-contain"
+                            />
+                          </div>
+                          <h3 className="text-white font-medium mb-1">{escape.title}</h3>
+                          <p className="text-slate-400 text-sm">{escape.theme}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Si l'utilisateur choisit le sur-mesure */}
+                {sessionType === "custom" && (
+                  <div data-testid="step-1-custom" className="space-y-6">
+                    <h2 className="text-2xl font-bold text-white font-['Playfair_Display']">
+                      Configuration sur-mesure
+                    </h2>
+
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="custom-theme" className="text-white mb-2 block">Thème souhaité *</Label>
+                        <Input
+                          id="custom-theme"
+                          value={customTheme}
+                          onChange={(e) => setCustomTheme(e.target.value)}
+                          placeholder="Ex: Pokemon, Horreur, manga ..."
+                          className="bg-slate-800 border-slate-700 text-white"
+                          data-testid="input-custom-theme"
+                          required
                         />
                       </div>
-                      <h3 className="text-white font-medium mb-1">{escape.title}</h3>
-                      <p className="text-slate-400 text-sm">{escape.theme}</p>
-                    </button>
-                  ))}
-                </div>
+
+                      <div>
+                        <Label htmlFor="custom-detail" className="text-white mb-2 block">Détail / Ambiance souhaitée *</Label>
+                        <Input
+                          id="custom-detail"
+                          value={customDetail}
+                          onChange={(e) => setCustomDetail(e.target.value)}
+                          placeholder="Ex: debutant, voyage en  train, j'aime l'astronomie ..."
+                          className="bg-slate-800 border-slate-700 text-white"
+                          data-testid="input-custom-detail"
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Step 2: Select Duration, Date & Time */}
-            {step === 2 && (
-              <div data-testid="step-2" className="space-y-6">
-                <h2 className="text-2xl font-bold text-white font-['Playfair_Display']">
-                  Choisissez la durée, date et heure
-                </h2>
+                {/* etape 2 selection durée et heure */}
+                {step === 2 && (
+                  <div data-testid="step-2" className="space-y-6">
+                    <h2 className="text-2xl font-bold text-white font-['Playfair_Display']">
+                      Choisissez la durée, date et heure
+                    </h2>
 
-                {/* Duration Selection FIRST */}
-                <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-800">
-                  <Label className="text-white mb-3 block flex items-center gap-2">
-                    <Clock size={18} className="text-amber-400" />
-                    Durée de l'escape
-                  </Label>
-                  <div className="grid grid-cols-3 gap-3">
-                    {[30, 60, 90].map((d) => (
-                      <button
-                        key={d}
-                        onClick={() => setDuration(d)}
-                        data-testid={`duration-${d}`}
-                        className={`py-3 px-4 rounded-lg font-medium transition-all ${duration === d
-                          ? "bg-amber-400 text-slate-900"
-                          : "bg-slate-800 text-white hover:bg-slate-700"
-                          }`}
-                      >
-                        {durationText[d]}
-                      </button>
-                    ))}
-                  </div>
-                  <p className="text-slate-500 text-xs mt-2">
-                    {duration === 30 && "Session courte - Idéale pour découvrir"}
-                    {duration === 60 && "Session standard - L'expérience complète"}
-                    {duration === 90 && "Session longue - Pour les passionnés"}
-                  </p>
-                </div>
+                    {/* Duration Selection FIRST */}
+                    <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-800">
+                      <Label className="text-white mb-3 block flex items-center gap-2">
+                        <Clock size={18} className="text-amber-400" />
+                        Durée de l'escape
+                      </Label>
+                      <div className="grid grid-cols-3 gap-3">
+                        {[30, 60, 90].map((d) => (
+                          <button
+                            key={d}
+                            onClick={() => setDuration(d)}
+                            data-testid={`duration-${d}`}
+                            className={`py-3 px-4 rounded-lg font-medium transition-all ${duration === d
+                              ? "bg-amber-400 text-slate-900"
+                              : "bg-slate-800 text-white hover:bg-slate-700"
+                              }`}
+                          >
+                            {durationText[d]}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-slate-500 text-xs mt-2">
+                        {duration === 30 && "Session courte - Idéale pour découvrir"}
+                        {duration === 60 && "Session standard - L'expérience complète"}
+                        {duration === 90 && "Session longue - Pour les passionnés"}
+                      </p>
+                    </div>
 
-                <div className="grid md:grid-cols-2 gap-6">
-                  {/* Calendar */}
-                  <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-800">
-                    <Label className="text-white mb-4 block">Date</Label>
-                    <Calendar
-                      mode="single"
-                      selected={selectedDate}
-                      onSelect={(date) => {
-                        setSelectedDate(date);
-                        setSelectedSlot("");
-                      }}
-                      disabled={disabledDays}
-                      locale={fr}
-                      className="rounded-md"
-                      data-testid="date-calendar"
-                    />
-                  </div>
+                    <div className="grid md:grid-cols-2 gap-6">
+                      {/* Calendar */}
+                      <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-800">
+                        <Label className="text-white mb-4 block">Date</Label>
+                        <Calendar
+                          mode="single"
+                          selected={selectedDate}
+                          onSelect={(date) => {
+                            setSelectedDate(date);
+                            setSelectedSlot("");
+                          }}
+                          disabled={disabledDays}
+                          locale={fr}
+                          className="rounded-md"
+                          data-testid="date-calendar"
+                        />
+                      </div>
 
-                  {/* Time Slots */}
-                  <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-800">
-                    <Label className="text-white mb-4 block">Créneau horaire</Label>
-                    {!selectedDate ? (
-                      <p className="text-slate-500 text-sm">Sélectionnez d'abord une date</p>
-                    ) : slotsLoading ? (
-                      <Loader2 className="w-6 h-6 text-amber-400 animate-spin" />
-                    ) : (
-                      <>
-                        <div className="grid grid-cols-2 gap-2">
-                          {availableSlots.map((slot) => {
-                            const canSelect = canSelectSlot(slot.time);
-                            const isSelected = selectedSlot === slot.time;
-                            const isBlockedBySelection = isSlotBlockedBySelection(slot.time);
+                      {/* Time Slots */}
+                      <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-800">
+                        <Label className="text-white mb-4 block">Créneau horaire</Label>
+                        {!selectedDate ? (
+                          <p className="text-slate-500 text-sm">Sélectionnez d'abord une date</p>
+                        ) : slotsLoading ? (
+                          <Loader2 className="w-6 h-6 text-amber-400 animate-spin" />
+                        ) : (
+                          <>
+                            <div className="grid grid-cols-2 gap-2">
+                              {availableSlots.map((slot) => {
+                                const canSelect = canSelectSlot(slot.time);
+                                const isSelected = selectedSlot === slot.time;
+                                const isBlockedBySelection = isSlotBlockedBySelection(slot.time);
 
-                            return (
-                              <button
-                                key={slot.time}
-                                onClick={() => canSelect && setSelectedSlot(slot.time)}
-                                disabled={!canSelect}
-                                data-testid={`slot-${slot.time}`}
-                                className={`py-2 px-3 rounded-lg text-sm font-medium transition-all relative ${!slot.is_available
-                                  ? "bg-slate-800/50 text-slate-600 cursor-not-allowed"
-                                  : !canSelect
-                                    ? "bg-slate-800/50 text-slate-600 cursor-not-allowed"
-                                    : isSelected
-                                      ? "bg-amber-400 text-slate-900"
-                                      : "bg-slate-800 text-white hover:bg-slate-700"
-                                  }`}
+                                return (
+                                  <button
+                                    key={slot.time}
+                                    onClick={() => canSelect && setSelectedSlot(slot.time)}
+                                    disabled={!canSelect}
+                                    data-testid={`slot-${slot.time}`}
+                                    className={`py-2 px-3 rounded-lg text-sm font-medium transition-all relative ${!slot.is_available
+                                      ? "bg-slate-800/50 text-slate-600 cursor-not-allowed"
+                                      : !canSelect
+                                        ? "bg-slate-800/50 text-slate-600 cursor-not-allowed"
+                                        : isSelected
+                                          ? "bg-amber-400 text-slate-900"
+                                          : "bg-slate-800 text-white hover:bg-slate-700"
+                                      }`}
 
-                              >
-                                {slot.time}
-                                {isBlockedBySelection && (
-                                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-400 rounded-full flex items-center justify-center text-xs text-slate-900">
-                                    +
-                                  </span>
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
+                                  >
+                                    {slot.time}
+                                    {isBlockedBySelection && (
+                                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-400 rounded-full flex items-center justify-center text-xs text-slate-900">
+                                        +
+                                      </span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
 
 
-                        {/* Legend */}
-                        <div className="mt-4 pt-4 border-t border-slate-700 space-y-2">
-                          <div className="flex items-center gap-2 text-xs text-slate-400">
-                            <div className="w-4 h-4 rounded bg-amber-400"></div>
-                            <span>Créneau sélectionné</span>
-                          </div>
-                          {/*<div className="flex items-center gap-2 text-xs text-slate-400">
+                            {/* Legend */}
+                            <div className="mt-4 pt-4 border-t border-slate-700 space-y-2">
+                              <div className="flex items-center gap-2 text-xs text-slate-400">
+                                <div className="w-4 h-4 rounded bg-amber-400"></div>
+                                <span>Créneau sélectionné</span>
+                              </div>
+                              {/*<div className="flex items-center gap-2 text-xs text-slate-400">
                             <div className="w-4 h-4 rounded bg-amber-400/30 border border-amber-400/50"></div>
                             <span>Créneaux réservés pour votre session</span>
                           </div>*/}
-                          <div className="flex items-center gap-2 text-xs text-slate-400">
-                            <div className="w-4 h-4 rounded bg-red-900/30"></div>
-                            <span>Déjà réservé</span>
-                          </div>
-                        </div>
+                              <div className="flex items-center gap-2 text-xs text-slate-400">
+                                <div className="w-4 h-4 rounded bg-red-900/30"></div>
+                                <span>Déjà réservé</span>
+                              </div>
+                            </div>
 
 
-                        {selectedSlot && (
-                          <div className="mt-4 p-3 bg-amber-400/10 border border-amber-400/30 rounded-lg">
-                            <p className="text-amber-400 text-sm flex items-center gap-2">
-                              <AlertCircle size={16} />
-                              Session de {selectedSlot} à {
-                                (() => {
-                                  const [h, m] = selectedSlot.split(':').map(Number);
-                                  const endMinutes = h * 60 + m + duration;
-                                  const endH = Math.floor(endMinutes / 60);
-                                  const endM = endMinutes % 60;
-                                  return `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
-                                })()
-                              }
-                            </p>
-                          </div>
+                            {selectedSlot && (
+                              <div className="mt-4 p-3 bg-amber-400/10 border border-amber-400/30 rounded-lg">
+                                <p className="text-amber-400 text-sm flex items-center gap-2">
+                                  <AlertCircle size={16} />
+                                  Session de {selectedSlot} à {
+                                    (() => {
+                                      const [h, m] = selectedSlot.split(':').map(Number);
+                                      const endMinutes = h * 60 + m + duration;
+                                      const endH = Math.floor(endMinutes / 60);
+                                      const endM = endMinutes % 60;
+                                      return `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
+                                    })()
+                                  }
+                                </p>
+                              </div>
+                            )}
+                          </>
                         )}
-                      </>
-                    )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 3: selection du nombre de personnes */}
+                {step === 3 && (
+                  <div data-testid="step-3" className="space-y-6">
+                    <h2 className="text-2xl font-bold text-white font-['Playfair_Display']">
+                      Nombre de participants
+                    </h2>
+
+                    <div className="bg-slate-900/50 rounded-xl p-6 border border-slate-800">
+                      <Label className="text-white mb-4 block flex items-center gap-2">
+                        <Users size={18} className="text-amber-400" />
+                        Combien serez-vous ?
+                      </Label>
+                      <div className="flex items-center gap-4">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setNumPeople(Math.max(4, numPeople - 1))}
+                          className="w-12 h-12 p-0 text-xl"
+                          data-testid="decrease-people"
+                        >
+                          -
+                        </Button>
+                        <Input
+                          type="number"
+                          min={4}
+                          max={39}
+                          value={numPeople}
+                          onChange={(e) => setNumPeople(Math.min(39, Math.max(4, Number(e.target.value))))}
+                          className="w-24 text-center text-xl bg-slate-800 border-slate-700"
+                          data-testid="people-input"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setNumPeople(Math.min(39, numPeople + 1))}
+                          className="w-12 h-12 p-0 text-xl"
+                          data-testid="increase-people"
+                        >
+                          +
+                        </Button>
+                      </div>
+                      <p className="text-slate-500 text-sm mt-3">Entre 4 et 39 personnes</p>
+                    </div>
+                  </div>
+                )}
+
+
+                {/* Step 4: info de contact */}
+                {step === 4 && (
+                  <form data-testid="step-4" className="space-y-6" onSubmit={handleSubmit}>
+                    <h2 className="text-2xl font-bold text-white font-['Playfair_Display']">
+                      Vos coordonnées
+                    </h2>
+
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="name" className="text-white mb-2 block">Nom complet *</Label>
+                        <Input
+                          id="name"
+                          value={formData.name}
+                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                          required
+                          className="bg-slate-800 border-slate-700"
+                          data-testid="input-name"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="email" className="text-white mb-2 block">Email *</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          value={formData.email}
+                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                          className={`bg-slate-800 border-slate-700 ${!isEmailValid(formData.email) && formData.email.length > 0 ? 'border-red-500' : ''}`}
+                        />
+                        {!isEmailValid(formData.email) && formData.email.length > 0 && (
+                          <p className="text-red-500 text-xs mt-1">Veuillez entrer une adresse email valide.</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="phone" className="text-white mb-2 block">Téléphone *</Label>
+                      <Input
+                        id="phone"
+                        type="tel"
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        required
+                        className="bg-slate-800 border-slate-700"
+                        placeholder="06 XX XX XX XX"
+                        data-testid="input-phone"
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-white mb-2 block flex items-center gap-2">
+                        <MapPin size={16} className="text-amber-400" />
+                        Adresse de l'événement *
+                      </Label>
+                      <Input
+                        value={formData.street_address}
+                        onChange={(e) => setFormData({ ...formData, street_address: e.target.value })}
+                        required
+                        placeholder="12 Rue de la Paix"
+                        className="bg-slate-800 border-slate-700 mb-3"
+                        data-testid="input-street"
+                      />
+                      <div className="grid grid-cols-3 gap-3">
+                        <Input
+                          value={formData.zip_code}
+                          onChange={(e) => setFormData({ ...formData, zip_code: e.target.value })}
+                          required
+                          placeholder="75002"
+                          className="bg-slate-800 border-slate-700"
+                          data-testid="input-zipcode"
+                        />
+                        <Input
+                          value={formData.city}
+                          onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                          required
+                          placeholder="Paris"
+                          className="bg-slate-800 border-slate-700 col-span-2"
+                          data-testid="input-city"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="message" className="text-white mb-2 block">Message (optionnel)</Label>
+                      <Textarea
+                        id="message"
+                        value={formData.message}
+                        onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                        placeholder="Informations supplémentaires, demandes spéciales..."
+                        className="bg-slate-800 border-slate-700 min-h-[80px]"
+                        data-testid="input-message"
+                      />
+                    </div>
+                  </form>
+                )}
+
+              </div>
+
+          {/* Sidebar */}
+            <div className="lg:col-span-1">
+              <div className="sticky top-28 bg-slate-900/50 rounded-xl border border-slate-800 p-6">
+                <h3 className="text-lg font-semibold text-white mb-4 font-['Playfair_Display']">
+                  Récapitulatif
+                </h3>
+
+                {selectedEscape && (
+                  <div className="mb-4 pb-4 border-b border-slate-800">
+                    <div className="w-full h-32 flex items-center justify-center overflow-hidden rounded-lg bg-gray-900 border border-gray-800">
+                      <img
+                        src={selectedEscape.image_url}
+                        alt={selectedEscape.title}
+                        className="max-h-full max-w-full object-contain"
+                      />
+                    </div>
+                    <p className="text-white font-medium text-sm truncate">{selectedEscape.title}</p>
+                    <p className="text-slate-400 text-xs">{selectedEscape.theme}</p>
+                  </div>
+                )}
+
+                <div className="space-y-3 text-sm">
+                  {selectedDate && (
+                    <div className="flex items-center gap-2 text-slate-300">
+                      <CalendarDays size={16} className="text-amber-400" />
+                      {format(selectedDate, "d MMMM yyyy", { locale: fr })}
+                    </div>
+                  )}
+                  {selectedSlot && (
+                    <div className="flex items-center gap-2 text-slate-300">
+                      <Clock size={16} className="text-amber-400" />
+                      {selectedSlot} - {durationText[duration]}
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 text-slate-300">
+                    <Users size={16} className="text-amber-400" />
+                    {numPeople} personnes
                   </div>
                 </div>
-              </div>
-            )}
 
-            {/* Step 3: Number of People */}
-            {step === 3 && (
-              <div data-testid="step-3" className="space-y-6">
-                <h2 className="text-2xl font-bold text-white font-['Playfair_Display']">
-                  Nombre de participants
-                </h2>
-
-                <div className="bg-slate-900/50 rounded-xl p-6 border border-slate-800">
-                  <Label className="text-white mb-4 block flex items-center gap-2">
-                    <Users size={18} className="text-amber-400" />
-                    Combien serez-vous ?
-                  </Label>
-                  <div className="flex items-center gap-4">
+                {/* Navigation Buttons - Sidebar Version */}
+                <div className="flex flex-col gap-3 mt-8">
+                  {step > 1 && (
                     <Button
                       type="button"
-                      variant="outline"
-                      onClick={() => setNumPeople(Math.max(4, numPeople - 1))}
-                      className="w-12 h-12 p-0 text-xl"
-                      data-testid="decrease-people"
+                      onClick={() => setStep(step - 1)}
+                      className="h-12 w-40 flex items-center justify-center gap-2 bg-amber-400 hover:bg-amber-300 text-slate-900 font-semibold"
+                      data-testid="btn-previous"
                     >
-                      -
+                      <ChevronLeft size={18} />
+                      Précédent
                     </Button>
-                    <Input
-                      type="number"
-                      min={4}
-                      max={39}
-                      value={numPeople}
-                      onChange={(e) => setNumPeople(Math.min(39, Math.max(4, Number(e.target.value))))}
-                      className="w-24 text-center text-xl bg-slate-800 border-slate-700"
-                      data-testid="people-input"
-                    />
+                  )}
+
+                  {step < 4 ? (
                     <Button
                       type="button"
-                      variant="outline"
-                      onClick={() => setNumPeople(Math.min(39, numPeople + 1))}
-                      className="w-12 h-12 p-0 text-xl"
-                      data-testid="increase-people"
+                      onClick={() => setStep(step + 1)}
+                      disabled={!canProceed()}
+                      className="h-12 w-40 bg-amber-400 text-slate-900 hover:bg-amber-300 flex items-center justify-center gap-2 font-semibold"
+                      data-testid="btn-next"
                     >
-                      +
+                      Suivant
+                      <ChevronRight size={18} />
                     </Button>
-                  </div>
-                  <p className="text-slate-500 text-sm mt-3">Entre 4 et 39 personnes</p>
-
-                  {/* Price info */}
-                  <div className="mt-6 p-4 bg-slate-800/50 rounded-lg">
-                    <div className="flex justify-between text-sm mb-2">
-                      <span className="text-slate-400">Catégorie</span>
-                      <span className="text-white">{priceInfo.category}</span>
-                    </div>
-                    <div className="flex justify-between text-sm mb-2">
-                      <span className="text-slate-400">Prix par personne</span>
-                      <span className="text-white">{priceInfo.pricePerPerson}€</span>
-                    </div>
-                    <div className="flex justify-between text-lg font-semibold mt-3 pt-3 border-t border-slate-700">
-                      <span className="text-white">Total</span>
-                      <span className="text-amber-400">{priceInfo.totalPrice}€</span>
-                    </div>
-                  </div>
+                  ) : (
+                    <Button
+                      type="submit"
+                      onClick={handleSubmit}
+                      disabled={!canProceed() || submitting}
+                      className="h-12 w-40 bg-amber-400 text-slate-900 hover:bg-amber-300 flex items-center justify-center gap-2 font-semibold"
+                      data-testid="btn-submit"
+                    >
+                      {submitting ? (
+                        <Loader2 className="h-12 w-40 animate-spin" />
+                      ) : (
+                        <>
+                          Confirmer
+                          <CheckCircle2 size={18} />
+                        </>
+                      )}
+                    </Button>
+                  )}
                 </div>
-              </div>
-            )}
-
-
-            {/* Step 4: Contact Info */}
-            {step === 4 && (
-              <form data-testid="step-4" className="space-y-6" onSubmit={handleSubmit}>
-                <h2 className="text-2xl font-bold text-white font-['Playfair_Display']">
-                  Vos coordonnées
-                </h2>
-
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="name" className="text-white mb-2 block">Nom complet *</Label>
-                    <Input
-                      id="name"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      required
-                      className="bg-slate-800 border-slate-700"
-                      data-testid="input-name"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="email" className="text-white mb-2 block">Email *</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className={`bg-slate-800 border-slate-700 ${!isEmailValid(formData.email) && formData.email.length > 0 ? 'border-red-500' : ''}`}
-                    />
-                    {!isEmailValid(formData.email) && formData.email.length > 0 && (
-                      <p className="text-red-500 text-xs mt-1">Veuillez entrer une adresse email valide.</p>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="phone" className="text-white mb-2 block">Téléphone *</Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    required
-                    className="bg-slate-800 border-slate-700"
-                    placeholder="06 XX XX XX XX"
-                    data-testid="input-phone"
-                  />
-                </div>
-
-                <div>
-                  <Label className="text-white mb-2 block flex items-center gap-2">
-                    <MapPin size={16} className="text-amber-400" />
-                    Adresse de l'événement *
-                  </Label>
-                  <Input
-                    value={formData.street_address}
-                    onChange={(e) => setFormData({ ...formData, street_address: e.target.value })}
-                    required
-                    placeholder="12 Rue de la Paix"
-                    className="bg-slate-800 border-slate-700 mb-3"
-                    data-testid="input-street"
-                  />
-                  <div className="grid grid-cols-3 gap-3">
-                    <Input
-                      value={formData.zip_code}
-                      onChange={(e) => setFormData({ ...formData, zip_code: e.target.value })}
-                      required
-                      placeholder="75002"
-                      className="bg-slate-800 border-slate-700"
-                      data-testid="input-zipcode"
-                    />
-                    <Input
-                      value={formData.city}
-                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                      required
-                      placeholder="Paris"
-                      className="bg-slate-800 border-slate-700 col-span-2"
-                      data-testid="input-city"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="message" className="text-white mb-2 block">Message (optionnel)</Label>
-                  <Textarea
-                    id="message"
-                    value={formData.message}
-                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                    placeholder="Informations supplémentaires, demandes spéciales..."
-                    className="bg-slate-800 border-slate-700 min-h-[80px]"
-                    data-testid="input-message"
-                  />
-                </div>
-              </form>
-            )}
-
-          </div>
-
-          {/* Price Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="sticky top-28 bg-slate-900/50 rounded-xl border border-slate-800 p-6">
-              <h3 className="text-lg font-semibold text-white mb-4 font-['Playfair_Display']">
-                Récapitulatif
-              </h3>
-
-              {selectedEscape && (
-                <div className="mb-4 pb-4 border-b border-slate-800">
-                  <div className="w-full h-32 flex items-center justify-center overflow-hidden rounded-lg bg-gray-900 border border-gray-800">
-                    <img
-                      src={selectedEscape.image_url}
-                      alt={selectedEscape.title}
-                      className="max-h-full max-w-full object-contain"
-                    />
-                  </div>
-                  <p className="text-white font-medium text-sm truncate">{selectedEscape.title}</p>
-                  <p className="text-slate-400 text-xs">{selectedEscape.theme}</p>
-                </div>
-              )}
-
-              <div className="space-y-3 text-sm">
-                {selectedDate && (
-                  <div className="flex items-center gap-2 text-slate-300">
-                    <CalendarDays size={16} className="text-amber-400" />
-                    {format(selectedDate, "d MMMM yyyy", { locale: fr })}
-                  </div>
-                )}
-                {selectedSlot && (
-                  <div className="flex items-center gap-2 text-slate-300">
-                    <Clock size={16} className="text-amber-400" />
-                    {selectedSlot} - {durationText[duration]}
-                  </div>
-                )}
-                <div className="flex items-center gap-2 text-slate-300">
-                  <Users size={16} className="text-amber-400" />
-                  {numPeople} personnes
-                </div>
-              </div>
-
-              {/* Navigation Buttons - Sidebar Version */}
-              <div className="flex flex-col gap-3 mt-8">
-                {step > 1 && (
-                  <Button
-                    type="button"
-                    onClick={() => setStep(step - 1)}
-                    className="h-12 w-40 flex items-center justify-center gap-2 bg-amber-400 hover:bg-amber-300 text-slate-900 font-semibold"
-                    data-testid="btn-previous"
-                  >
-                    <ChevronLeft size={18} />
-                    Précédent
-                  </Button>
-                )}
-
-                {step < 4 ? (
-                  <Button
-                    type="button"
-                    onClick={() => setStep(step + 1)}
-                    disabled={!canProceed()}
-                    className="h-12 w-40 bg-amber-400 text-slate-900 hover:bg-amber-300 flex items-center justify-center gap-2 font-semibold"
-                    data-testid="btn-next"
-                  >
-                    Suivant
-                    <ChevronRight size={18} />
-                  </Button>
-                ) : (
-                  <Button
-                    type="submit"
-                    onClick={handleSubmit}
-                    disabled={!canProceed() || submitting}
-                    className="h-12 w-40 bg-amber-400 text-slate-900 hover:bg-amber-300 flex items-center justify-center gap-2 font-semibold"
-                    data-testid="btn-submit"
-                  >
-                    {submitting ? (
-                      <Loader2 className="h-12 w-40 animate-spin" />
-                    ) : (
-                      <>
-                        Confirmer
-                        <CheckCircle2 size={18} />
-                      </>
-                    )}
-                  </Button>
-                )}
-              </div>
             </div>
           </div>
         </div>
@@ -839,4 +885,4 @@ try {
     </div>
   );
 }
-export default BookingPage;
+      export default BookingPage;

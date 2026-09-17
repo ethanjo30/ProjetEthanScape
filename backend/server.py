@@ -1,3 +1,4 @@
+# inmport de toute les fonctionnalité
 from fastapi import FastAPI, APIRouter, HTTPException
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -23,10 +24,11 @@ from typing import List, Optional, Any
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# Récupération des variables
+# Récupération des variables base de donnée 
 mongo_url = os.getenv('MONGO_URL')
 db_name = os.getenv('DB_NAME')
 
+#si il n'est pas trouver mettre message d'erreur 
 if not mongo_url:
     raise RuntimeError("ERREUR : MONGO_URL est introuvable dans le fichier .env")
 
@@ -37,54 +39,8 @@ db = client["EthanScape"]
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
-@api_router.get("/admin/stats")
-async def get_admin_stats():
-    res_count = await db.reservations.count_documents({})
-    return {"reservations": {"total": res_count}}
 
-@api_router.get("/admin/reservations")
-async def get_all_reservations():
-    cursor = db.reservations.find({}, {"_id": 0})
-    return await cursor.to_list(length=1000)
-
-# Déclarez la route SANS /api au début du chemin
-@api_router.get("/client/reservations") 
-async def get_client_reservations():
-    cursor = db.reservations.find({}, {"_id": 0})
-    return await cursor.to_list(length=1000)
-
-# Modèle pour la mise à jour
-class UpdateReservation(BaseModel):
-    status: Optional[str] = None
-    # Ajoutez d'autres champs si nécessaire
-
-@api_router.get("/admin/escapes")
-async def get_admin_escapes():
-    cursor = db.escapes.find({}, {"_id": 0})
-    return await cursor.to_list(length=1000)
-
-@api_router.get("/admin/clients")
-async def get_admin_clients():
-    cursor = db.contacts.find({}, {"_id": 0}) # Assurez-vous que c'est la bonne collection
-    return await cursor.to_list(length=1000)
-
-@api_router.put("/admin/reservations/{res_id}")
-async def update_reservation(res_id: str, data: UpdateReservation):
-    # On utilise l'ID pour mettre à jour
-    result = await db.reservations.update_one(
-        {"id": res_id}, 
-        {"$set": data.model_dump(exclude_unset=True)}
-    )
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Réservation introuvable")
-    return {"message": "Mise à jour réussie"}
-
-@api_router.get("/admin/contacts")
-async def get_all_contacts():
-    cursor = db.contacts.find({}, {"_id": 0})
-    return await cursor.to_list(length=1000)
-
-# Configuration Email
+# Configuration Email avec brevo
 conf = ConnectionConfig(
     MAIL_USERNAME=os.getenv('MAIL_USERNAME'),
     MAIL_PASSWORD=os.getenv('MAIL_PASSWORD'), 
@@ -97,29 +53,12 @@ conf = ConnectionConfig(
     VALIDATE_CERTS=True
 )
 
-
-
 fastmail = FastMail(conf)
-# ========================
-# CONFIGURATION SÉCURITÉ (PLACE-LE ICI)
-# ========================
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "cree_une_phrase_tres_longue_ici")
+
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ALGORITHM = "HS256"
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/login")
-
-class LoginRequest(BaseModel):
-    username: str
-    password: str
-# ========================
-# PRICING CONFIGURATION
-# ========================
-PRICING = {
-    "4-9": {"30": 22, "60": 25, "90": 28},
-    "10-19": {"30": 19, "60": 22, "90": 25},
-    "20-29": {"30": 16, "60": 19, "90": 22},
-    "30-39": {"30": 13, "60": 16, "90": 19}
-}
 
 # ========================
 # MODELS
@@ -130,12 +69,11 @@ class EscapeGame(BaseModel):
     title: str
     description: str
     theme: str
-    difficulty: int
+    difficulty: str
     min_players: int
     max_players: int
     image_url: str
     is_active: bool = True
-    # Change datetime par Any ici pour accepter le format texte de MongoDB
     created_at: Any = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class EscapeGameCreate(BaseModel):
@@ -164,8 +102,6 @@ class ReservationCreate(BaseModel):
 
 class Reservation(ReservationCreate):
     id: Optional[str] = None
-    price_per_person: float
-    total_price: float
     status: str = "confirmed"
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -186,56 +122,12 @@ class ContactMessageCreate(BaseModel):
     subject: str
     message: str
 
-class PriceCalculation(BaseModel):
-    num_people: int
-    duration: int  # 30, 60, 90
-
-class PriceResponse(BaseModel):
-    price_per_person: float
-    total_price: float
-    group_category: str
-
-class TimeSlot(BaseModel):
-    time: str
-    is_available: bool
-
-# ========================
-# HELPER FUNCTIONS
-# ========================
-def calculate_price(num_people: int, duration: int) -> dict:
-    """Calculate price based on number of people and duration"""
-    if num_people < 4 or num_people > 39:
-        raise HTTPException(status_code=400, detail="Nombre de personnes doit être entre 4 et 39")
-    
-    if duration not in [30, 60, 90]:
-        raise HTTPException(status_code=400, detail="Durée doit être 30, 60 ou 90 minutes")
-    
-    # Determine group category
-    if 4 <= num_people <= 9:
-        category = "4-9"
-        category_label = "4-9 personnes"
-    elif 10 <= num_people <= 19:
-        category = "10-19"
-        category_label = "10-19 personnes"
-    elif 20 <= num_people <= 29:
-        category = "20-29"
-        category_label = "20-29 personnes"
-    else:
-        category = "30-39"
-        category_label = "30-39 personnes"
-    
-    price_per_person = PRICING[category][str(duration)]
-    total_price = price_per_person * num_people
-    
-    return {
-        "price_per_person": price_per_person,
-        "total_price": total_price,
-        "group_category": category_label
-    }
 
 # ========================
 # ROUTES - ESCAPES
 # ========================
+
+# retourne la liste des escape trouver dans la bdd
 @api_router.get("/escapes", response_model=List[EscapeGame])
 async def get_escapes(theme: Optional[str] = None):
     # On retire le filtre pour voir si vos données s'affichent
@@ -256,10 +148,10 @@ async def get_escapes(theme: Optional[str] = None):
 
     return escapes
 
-
+# recupere l'escape selectionné grace a son id 
 @api_router.get("/escapes/{escape_id}", response_model=EscapeGame)
-async def get_escape(escape_id: str):
-    # Les lignes ci-dessous DOIVENT avoir 4 espaces de décalage
+async def get_escape(escape_id: str):*
+
     escape = await db.escapes.find_one({"id": escape_id}, {"_id": 0})
     if not escape:
         raise HTTPException(status_code=404, detail="Escape game non trouvé")
@@ -268,16 +160,8 @@ async def get_escape(escape_id: str):
         escape['created_at'] = datetime.fromisoformat(escape['created_at'])
     
     return escape
-@api_router.post("/escapes", response_model=EscapeGame) 
-async def create_escape(escape: EscapeGameCreate, token: str = Depends(oauth2_scheme)):
-    """Seul un admin connecté peut créer un escape game"""
-    escape_obj = EscapeGame(**escape.model_dump())
-    doc = escape_obj.model_dump()
-    doc['created_at'] = doc['created_at'].isoformat()
-    
-    await db.escapes.insert_one(doc)
-    return escape_obj
 
+# met une seul fois le theme pour la recherche par theme
 @api_router.get("/themes")
 async def get_themes():
     """Get all unique themes"""
@@ -285,36 +169,18 @@ async def get_themes():
     return {"themes": themes}
 
 # ========================
-# ROUTES - PRICING
-# ========================
-@api_router.post("/calculate-price", response_model=PriceResponse)
-async def calculate_price_endpoint(data: PriceCalculation):
-    """Calculate price for a reservation"""
-    result = calculate_price(data.num_people, data.duration)
-    return result
-
-@api_router.get("/pricing")
-async def get_pricing():
-    """Get the full pricing grid"""
-    return PRICING
-
-# ========================
 # ROUTES - RESERVATIONS
 # ========================
 @api_router.post("/reservations", response_model=Reservation)
 async def create_reservation(reservation: ReservationCreate):
     """Créer une nouvelle réservation et envoyer une notification par e-mail"""
-    # Calcul automatique des prix via la fonction helper
-    price_info = calculate_price(reservation.num_people, reservation.duration)
     
     # Création de l'objet de réservation complet
     reservation_obj = Reservation(
         **reservation.model_dump(),
-        price_per_person=price_info["price_per_person"],
-        total_price=price_info["total_price"]
     )
     
-    # Préparation du document pour MongoDB
+    # envoi des donée recueilli a mongo
     doc = reservation_obj.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
     
@@ -391,6 +257,7 @@ async def create_reservation(reservation: ReservationCreate):
         </html>
         """
 
+        # envoie message sur boite mail
         message = MessageSchema(
             subject=f"🚨 Nouvelle réservation : {reservation_obj.escape_title}",
             recipients=["ethanscape.servicesclients@gmail.com"],
@@ -401,28 +268,18 @@ async def create_reservation(reservation: ReservationCreate):
         await fastmail.send_message(message)
         logging.info("✉️ E-mail d'alerte admin envoyé avec l'adresse hiérarchisée !")
 
+    # message d'erreur 
     except Exception as e:
         logging.error(f"❌ Échec de l'envoi de l'e-mail de notification : {e}")
         pass
 
     return reservation_obj
-
-
-@api_router.get("/reservations", response_model=List[Reservation])
-async def get_reservations():
-    """Récupérer toutes les réservations pour l'admin"""
-    reservations = await db.reservations.find({}, {"_id": 0}).to_list(1000)
-    return reservations
-
-
+# recupere et affiche si les jour est crénaux son libre 
 @api_router.get("/available-slots")
-async def get_available_slots(date: str, escape_id: Optional[str] = None):
-    """Récupérer les créneaux avec filtrage par escape_id pour éviter le blocage global"""
+async def get_available_slots(date: str):
+    """Récupérer les créneaux disponibles pour une date donnée"""
     base_slots = ["09:00", "10:00", "11:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00"]
     query = {"date": date, "status": {"$ne": "cancelled"}}
-    
-    if escape_id:
-        query["escape_id"] = escape_id
         
     booked = await db.reservations.find(
         query,
@@ -440,36 +297,8 @@ async def get_available_slots(date: str, escape_id: Optional[str] = None):
     
     return {"date": date, "slots": slots}
 
-# ========================
-# ROUTES - AUTHENTICATION
-# ========================
-@api_router.post("/login")
-async def login(data: LoginRequest):
-    """Route pour connecter l'admin"""
-    # Identifiants de test (tu pourras les mettre en BDD plus tard)
-    ADMIN_EMAIL = "admin@ethanscape.com"
-    ADMIN_PASS = "EthanScape2026!" # C'est le mot de passe que tu taperas sur le site
+    @api_router.get("/available-slots")
 
-    if data.username == ADMIN_EMAIL and data.password == ADMIN_PASS:
-        # Création du Token JWT
-        access_token_expires = datetime.now(timezone.utc)+ timedelta(hours=24)
-        token_data = {
-            "sub": data.username,
-            "exp": access_token_expires
-        }
-        token = jwt.encode(token_data, SECRET_KEY, algorithm=ALGORITHM)
-        
-        return {
-            "access_token": token, 
-            "token_type": "bearer",
-            "user": {
-                "email": ADMIN_EMAIL, 
-                "role": "admin",
-                "name": "Administrateur"
-            }
-        }
-    
-    raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect")
 
 class ContactMessageCreate(BaseModel):
     name: str
@@ -482,28 +311,23 @@ class ContactMessageCreate(BaseModel):
 async def handle_contact(contact: ContactMessageCreate):
     """Reçoit les messages du formulaire de contact"""
     try:
-        # 1. Mise à jour ou Création (Upsert) dans MongoDB
-        # On cherche par 'email'. Si l'email existe, on met à jour les infos. 
-        # S'il n'existe pas, MongoDB le crée automatiquement.
+        # mise a jour ou création du contact dans mongo
         await db.contacts.update_one(
-            {"email": contact.email},  # Critère de recherche
+            {"email": contact.email}, 
             {
                 "$set": {
                     "name": contact.name,
                     "phone": contact.phone,
                     "updated_at": datetime.now(timezone.utc)
                 },
-                "$setOnInsert": { # Ces champs ne sont ajoutés QUE lors de la création
+                "$setOnInsert": { 
                     "created_at": datetime.now(timezone.utc)
                 }
             },
             upsert=True
         )
 
-        # 2. Ici, vous pouvez ajouter l'envoi d'email si besoin
-        # 2. Envoi de l'e-mail (vous utilisez ici toutes les infos, y compris sujet et message)
-        # Note : Assurez-vous d'avoir configuré 'fastmail' globalement
-        # 2. Préparation et envoi de l'e-mail
+        # envoi du message sur la boite mail 
         message = MessageSchema(
             subject=f"Nouveau contact : {contact.subject}",
             recipients=["ethanscape.servicesclients@gmail.com"],
@@ -511,7 +335,6 @@ async def handle_contact(contact: ContactMessageCreate):
             subtype=MessageType.plain
         )
         
-        # 🔥 C'EST CETTE LIGNE QUI MANQUE DANS VOTRE CODE ACTUEL !
         await fastmail.send_message(message)
         
         logging.info(f"✅ E-mail envoyé avec succès pour : {contact.name}")
@@ -521,8 +344,7 @@ async def handle_contact(contact: ContactMessageCreate):
         logging.error(f"Erreur serveur : {e}")
         raise HTTPException(status_code=500, detail="Erreur lors de l'enregistrement du message")
 
-# Include the router in the main app
-
+# sécurité react fast api
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

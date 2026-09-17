@@ -9,9 +9,6 @@ import HomePage from "./pages/HomePage";
 import EscapesPage from "./pages/EscapesPage";
 import BookingPage from "./pages/BookingPage";
 import ContactPage from "./pages/ContactPage";
-import LoginPage from "./pages/LoginPage";
-import ClientDashboard from "./pages/ClientDashboard";
-import AdminDashboard from "./pages/AdminDashboard";
 import RGPDPage from "./pages/RGPDPage";
 
 // Components
@@ -31,9 +28,6 @@ function App() {
               <Route path="/escapes" element={<EscapesPage />} />
               <Route path="/reservation" element={<BookingPage />} />
               <Route path="/contact" element={<ContactPage />} />
-              <Route path="/connexion" element={<LoginPage />} />
-              <Route path="/mon-compte" element={<ClientDashboard />} />
-              <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/rgpd" element={<RGPDPage />} />
             </Routes>
           </main>
