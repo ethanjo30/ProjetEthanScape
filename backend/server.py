@@ -150,7 +150,7 @@ async def get_escapes(theme: Optional[str] = None):
 
 # recupere l'escape selectionné grace a son id 
 @api_router.get("/escapes/{escape_id}", response_model=EscapeGame)
-async def get_escape(escape_id: str):*
+async def get_escape(escape_id: str):
 
     escape = await db.escapes.find_one({"id": escape_id}, {"_id": 0})
     if not escape:
