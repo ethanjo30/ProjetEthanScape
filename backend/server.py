@@ -300,12 +300,12 @@ async def get_available_slots(date: str):
     @api_router.get("/available-slots")
 
 
-class ContactMessageCreate(BaseModel):
-    name: str
-    email: EmailStr
-    phone: Optional[str] = None
-    subject: str
-    message: str
+    class ContactMessageCreate(BaseModel):
+        name: str
+        email: EmailStr
+        phone: Optional[str] = None
+        subject: str
+        message: str
 
 @api_router.post("/contact")
 async def handle_contact(contact: ContactMessageCreate):
