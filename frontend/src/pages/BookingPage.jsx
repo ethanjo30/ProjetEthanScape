@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { fr } from "date-fns/locale";
 import { format, isBefore, startOfDay, addDays } from "date-fns";
+
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "https://projetethanscape.onrender.com";
 const API = `${BACKEND_URL}/api`;
