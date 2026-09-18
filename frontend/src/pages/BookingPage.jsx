@@ -303,6 +303,20 @@ const BookingPage = () => {
     session_type: sessionType,
   };
 
+  // Réinitialise les sélections spécifiques lors du changement de type de session
+const handleSessionTypeChange = (type) => {
+  if (type === sessionType) return;
+
+  setSessionType(type);
+
+  if (type === "existing") {
+    setCustomTheme("");
+    setCustomDetail("");
+  } else {
+    setSelectedEscape(null);
+  }
+};
+
   /** recapitulatif des donnée pour l'envoi du mail */
   if (step === 5) {
     return (
@@ -399,7 +413,7 @@ const BookingPage = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                   <button
                     type="button"
-                    onClick={() => setSessionType("existing")}
+                    onClick={() => handleSessionTypeChange("existing")}
                     className={`p-5 rounded-xl text-left border transition-all duration-200 ${sessionType === "existing"
                         ? "bg-amber-500/10 border-amber-500 text-amber-400 shadow-lg shadow-amber-500/10"
                         : "bg-slate-800/40 border-slate-700/60 text-slate-300 hover:border-slate-500 hover:bg-slate-800/70"
@@ -411,7 +425,7 @@ const BookingPage = () => {
 
                   <button
                     type="button"
-                    onClick={() => setSessionType("custom")}
+                    onClick={() => handleSessionTypeChange("custom")}
                     className={`p-5 rounded-xl text-left border transition-all duration-200 ${sessionType === "custom"
                         ? "bg-amber-500/10 border-amber-500 text-amber-400 shadow-lg shadow-amber-500/10"
                         : "bg-slate-800/40 border-slate-700/60 text-slate-300 hover:border-slate-500 hover:bg-slate-800/70"
