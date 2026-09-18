@@ -80,7 +80,7 @@ const BookingPage = () => {
   useEffect(() => {
     if (selectedDate) {
       fetchAvailableSlots(format(selectedDate, "yyyy-MM-dd"));
-      setSelectedSlot(""); // Réinitialise la sélection visuelle à chaque changement de date
+      setSelectedSlot("");
     }
   }, [selectedDate]);
 
@@ -316,6 +316,25 @@ const handleSessionTypeChange = (type) => {
     setSelectedEscape(null);
   }
 };
+
+// Calcule la date minimale autorisée au format YYYY-MM-DD
+const getMinDateObj = () => {
+  const today = new Date();
+  if (sessionType === "custom") {
+    today.setDate(today.getDate() + 30);
+  } else {
+    today.setDate(today.getDate() + 1);
+  }
+  return today;
+};
+
+<DatePicker
+  selected={selectedDate}
+  onChange={(date) => setSelectedDate(date)}
+  minDate={getMinDateObj()}
+  dateFormat="dd/MM/yyyy"
+  className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white"
+/>
 
   /** recapitulatif des donnée pour l'envoi du mail */
   if (step === 5) {
