@@ -317,24 +317,34 @@ const handleSessionTypeChange = (type) => {
   }
 };
 
-// Calcule la date minimale autorisée au format YYYY-MM-DD
-const getMinDateObj = () => {
-  const today = new Date();
+{/* Calcul de la date minimale en YYYY-MM-DD */}
+{(() => {
+  const minDate = new Date();
   if (sessionType === "custom") {
-    today.setDate(today.getDate() + 30);
+    minDate.setDate(minDate.getDate() + 30);
   } else {
-    today.setDate(today.getDate() + 1);
+    minDate.setDate(minDate.getDate() + 1);
   }
-  return today;
-};
+  const minDateStr = minDate.toISOString().split("T")[0];
 
-<DatePicker
-  selected={selectedDate}
-  onChange={(date) => setSelectedDate(date)}
-  minDate={getMinDateObj()}
-  dateFormat="dd/MM/yyyy"
-  className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white"
-/>
+  return (
+    <div className="flex flex-col gap-2">
+      <label className="text-sm font-medium text-slate-300">
+        Sélectionner une date
+      </label>
+      <input
+        type="date"
+        min={minDateStr}
+        value={selectedDate ? new Date(selectedDate).toISOString().split("T")[0] : ""}
+        onChange={(e) => {
+          setSelectedDate(e.target.value ? new Date(e.target.value) : null);
+          setSelectedSlot("");
+        }}
+        className="w-full bg-slate-800/80 border border-slate-700/60 rounded-xl p-3 text-white focus:outline-none focus:border-amber-500"
+      />
+    </div>
+  );
+})()}
 
   /** recapitulatif des donnée pour l'envoi du mail */
   if (step === 5) {
