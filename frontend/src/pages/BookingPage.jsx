@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { format, isBefore, startOfDay } from "date-fns";
 import { fr } from "date-fns/locale";
-
+import { format, isBefore, startOfDay, addDays } from "date-fns";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "https://projetethanscape.onrender.com";
 const API = `${BACKEND_URL}/api`;
@@ -285,7 +285,17 @@ const BookingPage = () => {
   };
 
   const disabledDays = (date) => {
-    return isBefore(date, startOfDay(new Date()));
+    const today = startOfDay(new Date());
+
+    if (sessionType === "custom") {
+      // Mode sur-mesure : bloque tout ce qui est avant Aujourd'hui + 30 jours
+      const minCustomDate = addDays(today, 30);
+      return isBefore(date, minCustomDate);
+    }
+
+    // Mode existant : bloque tout ce qui est avant Demain (Aujourd'hui + 1 jour)
+    const minExistingDate = addDays(today, 1);
+    return isBefore(date, minExistingDate);
   };
 
   const durationText = { 30: "30 min", 60: "1 heure", 90: "1h30" };
@@ -316,35 +326,6 @@ const handleSessionTypeChange = (type) => {
     setSelectedEscape(null);
   }
 };
-
-{/* Calcul de la date minimale en YYYY-MM-DD */}
-{(() => {
-  const minDate = new Date();
-  if (sessionType === "custom") {
-    minDate.setDate(minDate.getDate() + 30);
-  } else {
-    minDate.setDate(minDate.getDate() + 1);
-  }
-  const minDateStr = minDate.toISOString().split("T")[0];
-
-  return (
-    <div className="flex flex-col gap-2">
-      <label className="text-sm font-medium text-slate-300">
-        Sélectionner une date
-      </label>
-      <input
-        type="date"
-        min={minDateStr}
-        value={selectedDate ? new Date(selectedDate).toISOString().split("T")[0] : ""}
-        onChange={(e) => {
-          setSelectedDate(e.target.value ? new Date(e.target.value) : null);
-          setSelectedSlot("");
-        }}
-        className="w-full bg-slate-800/80 border border-slate-700/60 rounded-xl p-3 text-white focus:outline-none focus:border-amber-500"
-      />
-    </div>
-  );
-})()}
 
   /** recapitulatif des donnée pour l'envoi du mail */
   if (step === 5) {
