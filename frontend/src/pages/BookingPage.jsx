@@ -18,7 +18,6 @@ import {
   ChevronRight,
   ChevronLeft
 } from "lucide-react";
-import { format, isBefore, startOfDay } from "date-fns";
 import { fr } from "date-fns/locale";
 import { format, isBefore, startOfDay, addDays } from "date-fns";
 
@@ -284,7 +283,7 @@ const BookingPage = () => {
     }
   };
 
-  const disabledDays = (date) => {
+  const disabledDays = useCallback((date) => {
     const today = startOfDay(new Date());
 
     if (sessionType === "custom") {
@@ -296,7 +295,7 @@ const BookingPage = () => {
     // Mode existant : bloque tout ce qui est avant Demain (Aujourd'hui + 1 jour)
     const minExistingDate = addDays(today, 1);
     return isBefore(date, minExistingDate);
-  };
+  }, [sessionType]);
 
   const durationText = { 30: "30 min", 60: "1 heure", 90: "1h30" };
 
