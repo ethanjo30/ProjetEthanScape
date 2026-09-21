@@ -288,10 +288,10 @@ const BookingPage = () => {
     const today = startOfDay(new Date());
 
     if (sessionType === "custom") {
-      // Mode sur-mesure : bloque tout ce qui est avant Aujourd'hui + 30 jours
-      const minCustomDate = addDays(today, 30);
-      return isBefore(date, minCustomDate);
-    }
+    // Désactiver tous les jours avant J+30
+    const minCustomDate = startOfDay(addDays(today, 30));
+    return isBefore(startOfDay(date), minCustomDate);
+  }
 
     // Mode existant : bloque tout ce qui est avant Demain (Aujourd'hui + 1 jour)
     const minExistingDate = addDays(today, 1);

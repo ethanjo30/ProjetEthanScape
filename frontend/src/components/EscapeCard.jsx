@@ -44,12 +44,33 @@ const EscapeCard = ({ escape }) => {
     </p>
 
     <div className="flex items-center justify-between pt-4 border-t border-white/10">
-      <span className="text-white/70 text-xs flex items-center gap-2">
-        <Users size={14} className="text-amber-400" />
-        {escape.players || "4-12"} joueurs
-      </span>
-      {/*<span className="text-amber-400 text-xs font-bold">Voir plus →</span>*/}
-    </div>
+  <div className="flex items-center gap-3">
+    {/* 5 Cadenas de difficulté */}
+    {escape.difficulty && (
+      <div className="flex items-center gap-1" title={`Difficulté : ${escape.difficulty}/5`}>
+        {[1, 2, 3, 4, 5].map((level) => (
+          <Lock
+            key={level}
+            size={13}
+            className={level <= escape.difficulty ? "text-amber-400 fill-amber-400" : "text-white/20"}
+          />
+        ))}
+      </div>
+    )}
+
+    {/* Séparateur discret si la difficulté existe */}
+    {escape.difficulty && <span className="text-white/30 text-xs">•</span>}
+
+    {/* Nombre de joueurs */}
+    <span className="text-white/70 text-xs flex items-center gap-1.5">
+      <Users size={14} className="text-amber-400" />
+      {escape.players || "4-12"} joueurs
+    </span>
+  </div>
+
+  {/*<span className="text-amber-400 text-xs font-bold">Voir plus →</span>*/}
+</div>
+
     <Link
           to={`/reservation?escape=${escape.id}`}
           data-testid={`book-escape-${escape.id}`}
